@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gbember/gt/logger"
 	"github.com/gbember/gt/network/msg"
 )
 
@@ -63,7 +64,7 @@ func (server *TCPServer) run() {
 				if max := 1 * time.Second; tempDelay > max {
 					tempDelay = max
 				}
-				//				log.Release("accept error: %v; retrying in %v", err, tempDelay)
+				logger.Error("accept error: %v; retrying in %v", err, tempDelay)
 				time.Sleep(tempDelay)
 				continue
 			}
@@ -76,6 +77,7 @@ func (server *TCPServer) run() {
 		if len(server.conns) >= server.maxConnNum {
 			server.mutexConns.Unlock()
 			conn.Close()
+			logger.Info("too many connections")
 			continue
 		}
 		server.conns[conn] = struct{}{}

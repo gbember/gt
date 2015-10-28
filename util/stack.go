@@ -4,18 +4,19 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"runtime"
+
+	"github.com/gbember/gt/logger"
 )
 
 //用log模块记录错误调用函数栈 必须在defer中调用
 func LogPanicStack() {
 	if x := recover(); x != nil {
-		log.Printf("%v", x)
+		logger.Error("%v", x)
 		for i := 0; i < 10; i++ {
 			funcName, file, line, ok := runtime.Caller(i)
 			if ok {
-				log.Printf(" frame %v:[func:%v,file:%v,line:%v]\n", i, runtime.FuncForPC(funcName).Name(), file, line)
+				logger.Error(" frame %v:[func:%v,file:%v,line:%v]\n", i, runtime.FuncForPC(funcName).Name(), file, line)
 			}
 		}
 	}

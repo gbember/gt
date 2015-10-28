@@ -24,7 +24,7 @@ type agent struct {
 	msgParser msg.MsgParser
 }
 
-func RegisterConsole(addr string, maxConnNum int, maxDataLen int) {
+func RegisterModule(addr string, maxConnNum int, maxDataLen int) {
 	c := new(console)
 	c.addr = addr
 	c.maxConnNum = maxConnNum
@@ -32,7 +32,15 @@ func RegisterConsole(addr string, maxConnNum int, maxDataLen int) {
 	module.Register(c)
 }
 
-func (c *console) OnInit() {
+func (c *console) OnInit() {}
+
+func (c *console) OnDestroy() {
+	if c.server != nil {
+		c.server.Close()
+	}
+}
+
+func (c *console) Run(closeSign chan bool) {
 	msgParser, err := msg.NewMsgParserLine(c.maxDataLen)
 	if err != nil {
 		panic(err)
@@ -42,15 +50,6 @@ func (c *console) OnInit() {
 		panic(err)
 	}
 	c.server = server
-}
-
-func (c *console) OnDestroy() {
-	if c.server != nil {
-		c.server.Close()
-	}
-}
-
-func (c *console) Run(closeSign chan bool) {
 }
 
 func NewAgant(conn net.Conn, msgParser msg.MsgParser) network.TCPAgent {

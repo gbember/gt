@@ -81,6 +81,4 @@ func (a *agent) Run() {
 		a.msgParser.Write(a.conn, []byte(str))
 	}
 }
-func (a *agent) Close() {
-
-}
+func (a *agent) Close(int8) {}

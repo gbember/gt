@@ -13,14 +13,14 @@ type TCPServer struct {
 	//地址
 	addr string
 	//最大连接数
-	maxConnNum int
-	ln         net.Listener
-	wgLn       sync.WaitGroup
-	conns      map[net.Conn]struct{}
-	mutexConns sync.Mutex
-	wgConns    sync.WaitGroup
-	msgParser  msg.MsgParser
-	newAgent   func(net.Conn, msg.MsgParser) TCPAgent
+	maxConnNum  int
+	ln          net.Listener
+	wgLn        sync.WaitGroup
+	agents      map[TCPAgent]struct{}
+	mutexAgents sync.Mutex
+	wgAgents    sync.WaitGroup
+	msgParser   msg.MsgParser
+	newAgent    func(net.Conn, msg.MsgParser) TCPAgent
 }
 
 func StartTCPServer(addr string, maxConnNum int, msgParser msg.MsgParser, newAgent func(net.Conn, msg.MsgParser) TCPAgent) (*TCPServer, error) {
@@ -29,7 +29,7 @@ func StartTCPServer(addr string, maxConnNum int, msgParser msg.MsgParser, newAge
 	server.maxConnNum = maxConnNum
 	server.msgParser = msgParser
 	server.newAgent = newAgent
-	server.conns = make(map[net.Conn]struct{})
+	server.agents = make(map[TCPAgent]struct{})
 	err := server.init()
 	if err != nil {
 		return nil, err
@@ -73,22 +73,23 @@ func (server *TCPServer) run() {
 		tempDelay = 0
 
 		//判断是否超最高在线个数
-		server.mutexConns.Lock()
-		if len(server.conns) >= server.maxConnNum {
-			server.mutexConns.Unlock()
-			conn.Close()
+		agent := server.newAgent(conn, server.msgParser)
+		server.mutexAgents.Lock()
+		if len(server.agents) >= server.maxConnNum {
+			server.mutexAgents.Unlock()
+			agent.Close(1)
 			logger.Info("too many connections")
 			continue
 		}
-		server.conns[conn] = struct{}{}
-		server.mutexConns.Unlock()
+		server.agents[agent] = struct{}{}
+		server.mutexAgents.Unlock()
 
-		agent := server.newAgent(conn, server.msgParser)
-		server.wgConns.Add(1)
+		server.wgAgents.Add(1)
 		go func() {
 			agent.Run()
+			agent.Close(0)
 			conn.Close()
-			server.wgConns.Done()
+			server.wgAgents.Done()
 		}()
 	}
 }
@@ -97,11 +98,11 @@ func (server *TCPServer) Close() {
 	server.ln.Close()
 	server.wgLn.Wait()
 
-	server.mutexConns.Lock()
-	for conn := range server.conns {
-		conn.Close()
+	server.mutexAgents.Lock()
+	for agent := range server.agents {
+		agent.Close(2)
 	}
-	server.conns = nil
-	server.mutexConns.Unlock()
-	server.wgConns.Wait()
+	server.agents = nil
+	server.mutexAgents.Unlock()
+	server.wgAgents.Wait()
 }

@@ -20,7 +20,6 @@ func Register(cmd Command) {
 	if _, ok := commands[name]; ok {
 		panic(fmt.Sprintf("command %v is already registered", name))
 	}
-
 	commands[name] = cmd
 }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gbember/gt/console/command"
+	"github.com/gbember/gt/logger"
 	"github.com/gbember/gt/module"
 	"github.com/gbember/gt/network"
 	"github.com/gbember/gt/network/msg"
@@ -32,15 +33,7 @@ func RegisterModule(addr string, maxConnNum int, maxDataLen int) {
 	module.Register(c)
 }
 
-func (c *console) OnInit() {}
-
-func (c *console) OnDestroy() {
-	if c.server != nil {
-		c.server.Close()
-	}
-}
-
-func (c *console) Run(closeSign chan bool) {
+func (c *console) OnInit() {
 	msgParser, err := msg.NewMsgParserLine(c.maxDataLen)
 	if err != nil {
 		panic(err)
@@ -50,6 +43,16 @@ func (c *console) Run(closeSign chan bool) {
 		panic(err)
 	}
 	c.server = server
+	logger.Info("console start...")
+}
+
+func (c *console) OnDestroy() {
+	if c.server != nil {
+		c.server.Close()
+	}
+}
+
+func (c *console) Run(closeSign chan bool) {
 }
 
 func NewAgant(conn net.Conn, msgParser msg.MsgParser) network.TCPAgent {

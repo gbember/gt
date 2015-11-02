@@ -42,8 +42,10 @@ func Init() {
 }
 
 func Destroy() {
-	for i := len(modules); i >= 0; i-- {
-		destroy(modules[i])
+	if len(modules) > 0 {
+		for i := len(modules) - 1; i >= 0; i-- {
+			destroy(modules[i])
+		}
 	}
 }
 

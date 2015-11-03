@@ -33,3 +33,6 @@ func (p *MsgParserLine) Write(w io.Writer, dataBytes []byte) error {
 	_, err := w.Write(dataBytes)
 	return err
 }
+func (p *MsgParserLine) Clone() MsgParser {
+	return p
+}

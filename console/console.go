@@ -58,7 +58,7 @@ func (c *console) Run(closeSign chan bool) {
 func NewAgant(conn net.Conn, msgParser msg.MsgParser) network.TCPAgent {
 	agent := new(agent)
 	agent.conn = conn
-	agent.msgParser = msgParser
+	agent.msgParser = msgParser.Clone()
 	agent.prompt = []byte(">")
 	return agent
 }
@@ -84,4 +84,6 @@ func (a *agent) Run() {
 		a.msgParser.Write(a.conn, []byte(str))
 	}
 }
-func (a *agent) Close(int8) {}
+func (a *agent) Close(int8) {
+	a.conn.Close()
+}

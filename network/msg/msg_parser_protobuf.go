@@ -78,3 +78,11 @@ func (p *MsgParserProtobuf) Write(w io.Writer, dataBytes []byte) error {
 	_, err = w.Write(dataBytes)
 	return err
 }
+
+func (p *MsgParserProtobuf) Clone() MsgParser {
+	p1, err := NewMsgParserProtobuf(p.headLen, p.msgIDLen, p.maxDataLen)
+	if err != nil {
+		panic(err)
+	}
+	return p1
+}

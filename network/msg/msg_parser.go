@@ -8,4 +8,5 @@ import (
 type MsgParser interface {
 	Read(io.Reader) ([]byte, error)
 	Write(io.Writer, []byte) error
+	Clone() MsgParser
 }

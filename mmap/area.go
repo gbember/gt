@@ -38,6 +38,7 @@ func loadArea(pk *Packet) (*area, error) {
 	return a, nil
 }
 
+
 //是否穿过不能穿过的线
 func (a *area) isCrossNoPassLine(l *line) bool {
 	length := len(a.lines)

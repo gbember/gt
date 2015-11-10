@@ -47,7 +47,8 @@ func LoadMap(bs []byte) (*Map, error) {
 		}
 		m.am[a.id] = a
 	}
-	return nil, nil
+	err = m.init()
+	return m, err
 }
 
 //寻路
@@ -90,5 +91,13 @@ func (m *Map) FindPath(p1 point, p2 point) []point {
 			return []point{p2}
 		}
 	}
+	return nil
+}
+
+//地图数据初始化
+func (m *Map)init()error{
+	//1 构造格子区域关系
+	//2 构造区域不可穿过线
+	//3 构造区域与区域关系
 	return nil
 }

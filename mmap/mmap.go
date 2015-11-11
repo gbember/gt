@@ -4,6 +4,7 @@ package mmap
 import (
 	"errors"
 	"fmt"
+	"log"
 )
 
 type Map struct {
@@ -47,8 +48,8 @@ func LoadMap(bs []byte) (*Map, error) {
 		}
 		m.am[a.id] = a
 	}
-	err = m.init()
-	return m, err
+	m.init()
+	return m, nil
 }
 
 //寻路
@@ -95,9 +96,76 @@ func (m *Map) FindPath(p1 point, p2 point) []point {
 }
 
 //地图数据初始化
-func (m *Map)init()error{
+func (m *Map) init() {
 	//1 构造格子区域关系
-	//2 构造区域不可穿过线
-	//3 构造区域与区域关系
-	return nil
+	m.agm = make(map[int][]uint16)
+	length := len(m.am)
+	alist := make([]*area, 0, length)
+	for _, a := range m.am {
+		aid := a.id
+		gidList := a.getGrids(m.gsize, m.maxVNum)
+		for i := 0; i < len(gidList); i++ {
+			aidList, ok := m.agm[gidList[i]]
+			if ok {
+				aidList = append(aidList, aid)
+			} else {
+				aidList = make([]uint16, 0, 10)
+				aidList = append(aidList, aid)
+			}
+			m.agm[gidList[i]] = aidList
+		}
+		alist = append(alist, a)
+	}
+	//2 构造区域不可穿过线与构造区域与区域关系
+	for i := 0; i < length; i++ {
+		for j := i + 1; j < length; j++ {
+			alist[i].makeLineAndRela(alist[j])
+		}
+	}
+}
+
+func Test() {
+	m := new(Map)
+	m.gsize = 5
+	m.id = 1
+	m.maxVNum = 1000
+	m.am = make(map[uint16]*area)
+	for k := uint16(1); k <= 10; k++ {
+		for i := uint16(1); i <= 10; i++ {
+			a := new(area)
+			a.id = i * k
+			a.points = make([]point, 0, 4)
+			a.allLines = make([]*line, 0, 4)
+			a.lines = make(map[*line]bool)
+			a.areaMap = make(map[*area]bool)
+			p := point{x: float32(i) * 28, y: float32(k) * 28}
+			a.points = append(a.points, p)
+
+			p = point{x: float32(i+1) * 28, y: float32(k) * 28}
+			a.points = append(a.points, p)
+			l := &line{sp: a.points[0], ep: p}
+			a.lines[l] = true
+			a.allLines = append(a.allLines, l)
+
+			p = point{x: float32(i+1) * 28, y: float32(k+1) * 28}
+			a.points = append(a.points, p)
+			l = &line{sp: a.points[1], ep: p}
+			a.lines[l] = true
+			a.allLines = append(a.allLines, l)
+
+			p = point{x: float32(i) * 28, y: float32(k+1) * 28}
+			a.points = append(a.points, p)
+			l = &line{sp: a.points[2], ep: p}
+			a.lines[l] = true
+			a.allLines = append(a.allLines, l)
+
+			l = &line{sp: a.points[4-1], ep: a.points[0]}
+			a.lines[l] = true
+			a.allLines = append(a.allLines, l)
+			m.am[a.id] = a
+		}
+	}
+	m.init()
+	points := m.FindPath(point{x: 30, y: 30}, point{x: 250, y: 270})
+	log.Println(points)
 }

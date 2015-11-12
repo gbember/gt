@@ -1,21 +1,20 @@
 // area.go
 package mmap
 
-import (
-	"errors"
-)
+import "errors"
 
 //区域
 type area struct {
-	id       uint16         //区域ID
-	points   []point        //区域定点
-	allLines []*line        //区域所有线段
-	lines    map[*line]bool //区域不可穿过线段
-	areaMap  map[*area]bool //区域相邻区域
+	id       uint32          //区域ID
+	points   []point         //区域定点
+	allLines []*line         //区域所有线段
+	lineMap  map[*line]bool  //区域不可穿过线段(为nil)
+	lines    []*line         //区域不可穿过线段
+	areaMap  map[point]*area //区域相邻区域(点相连)
 }
 
 func loadArea(pk *Packet) (*area, error) {
-	id, err := pk.readUint16()
+	id, err := pk.readUint32()
 	if err != nil {
 		return nil, err
 	}
@@ -30,8 +29,8 @@ func loadArea(pk *Packet) (*area, error) {
 	a.id = id
 	a.points = make([]point, 0, pointNum)
 	a.allLines = make([]*line, 0, pointNum)
-	a.lines = make(map[*line]bool)
-	a.areaMap = make(map[*area]bool)
+	a.lineMap = make(map[*line]bool)
+	a.areaMap = make(map[point]*area)
 	//第一个
 	p := point{}
 	p.x, err = pk.readFloat32()
@@ -55,11 +54,11 @@ func loadArea(pk *Packet) (*area, error) {
 		}
 		a.points = append(a.points, p)
 		l := &line{sp: a.points[i-1], ep: p}
-		a.lines[l] = true
+		a.lineMap[l] = true
 		a.allLines = append(a.allLines, l)
 	}
 	l := &line{sp: a.points[pointNum-1], ep: a.points[0]}
-	a.lines[l] = true
+	a.lineMap[l] = true
 	a.allLines = append(a.allLines, l)
 	return a, nil
 }
@@ -69,10 +68,12 @@ func (a *area) makeLineAndRela(a1 *area) {
 	for i := 0; i < len(a.allLines); i++ {
 		for j := 0; j < len(a1.allLines); j++ {
 			if a.allLines[i].isEq(a1.allLines[j]) {
-				delete(a.lines, a.allLines[i])
-				delete(a1.lines, a1.allLines[j])
-				a.areaMap[a1] = true
-				a1.areaMap[a] = true
+				delete(a.lineMap, a.allLines[i])
+				delete(a1.lineMap, a1.allLines[j])
+				a.areaMap[a.allLines[i].sp] = a1
+				a.areaMap[a.allLines[i].ep] = a1
+				a1.areaMap[a.allLines[j].sp] = a
+				a1.areaMap[a.allLines[j].ep] = a
 				break
 			}
 		}
@@ -81,7 +82,7 @@ func (a *area) makeLineAndRela(a1 *area) {
 
 //是否穿过不能穿过的线
 func (a *area) isCrossNoPassLine(l *line) bool {
-	for l1, _ := range a.lines {
+	for l1, _ := range a.lineMap {
 		if l1.isAcrossLine(l) {
 			return true
 		}
@@ -115,8 +116,8 @@ func (a *area) getGrids(gsize int, maxVNum int) []int {
 	ret := make([]int, 0, 20)
 	fgsize := float32(gsize)
 	var gid int = 0
-	for x := minX; x <= maxX; x += fgsize {
-		for y := minY; y < maxY; y += fgsize {
+	for x := float32(int(minX) / gsize * gsize); x <= maxX; x += fgsize {
+		for y := float32(int(minY) / gsize * gsize); y <= maxY; y += fgsize {
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			if a.isContainGrid(gid, gsize, maxVNum) {
 				ret = append(ret, gid)
@@ -153,5 +154,5 @@ func (a *area) isContainGrid(gridNum int, gsize int, maxVNum int) bool {
 	if l.isAcrossLines(a.allLines) {
 		return true
 	}
-	return true
+	return false
 }

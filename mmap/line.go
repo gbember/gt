@@ -1,9 +1,7 @@
 // line.go
 package mmap
 
-import (
-	"math"
-)
+import "math"
 
 //线段
 type line struct {
@@ -49,60 +47,47 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 	y := l.ep.y - l.sp.y
 	tan := y / x
 	a := l.ep.y - tan*l.ep.x
-	//	gidMap := make(map[int]bool)
+	fgsize := float32(gsize)
 	gid := getGridNum(l.sp, gsize, maxVNum)
 	gidList = append(gidList, gid)
 	if x > 0 {
-		max := int(l.ep.x) / gsize * gsize
-		for i := int(l.sp.x)/gsize*gsize + gsize; i <= max; i += gsize {
-			x = float32(i)
+		max := float32(int(l.ep.x) / gsize * gsize)
+		x = float32(int(l.sp.x)/gsize*gsize + gsize)
+		//		log.Println(x, max, gsize)
+		for ; x <= max; x += fgsize {
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
-			//			if !gidMap[gid] {
-			//				gidMap[gid] = true
-			//				gidList = append(gidList, gid)
-			//			}
 		}
 	} else {
-		min := int(l.ep.x) / gsize * gsize
-		for i := int(l.sp.x)/gsize*gsize - gsize; i >= min; i -= gsize {
-			x = float32(i)
+		min := float32(int(l.ep.x) / gsize * gsize)
+		x = float32(int(l.sp.x)/gsize*gsize - gsize)
+		//		log.Println(x, min, gsize)
+		for ; x >= min; x -= fgsize {
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
-			//			if !gidMap[gid] {
-			//				gidMap[gid] = true
-			//				gidList = append(gidList, gid)
-			//			}
 		}
 	}
 	if l.ep.y-l.sp.y > 0 {
-		max := int(l.ep.y) / gsize * gsize
-		for i := int(l.sp.x)/gsize*gsize + gsize; i <= max; i += gsize {
-			y = float32(i)
+		max := float32(int(l.ep.y) / gsize * gsize)
+		y = float32(int(l.sp.y)/gsize*gsize + gsize)
+		//		log.Println(y, max, gsize)
+		for ; y <= max; y += fgsize {
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
-			//			if !gidMap[gid] {
-			//				gidMap[gid] = true
-			//				gidList = append(gidList, gid)
-			//			}
 		}
 	} else {
-		min := int(l.ep.y) / gsize * gsize
-		for i := int(l.sp.x)/gsize*gsize - gsize; i >= min; i -= gsize {
-			y = float32(i)
+		min := float32(int(l.ep.y) / gsize * gsize)
+		y = float32(int(l.sp.y)/gsize*gsize - gsize)
+		//		log.Println(y, min, gsize)
+		for ; y >= min; y -= fgsize {
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
-			//			if !gidMap[gid] {
-			//				gidMap[gid] = true
-			//				gidList = append(gidList, gid)
-			//			}
 		}
 	}
-
 	return gidList
 }
 
@@ -111,7 +96,7 @@ func (l *line) isEq(l1 *line) bool {
 	return (l.sp == l1.sp && l.ep == l1.ep) || (l.ep == l1.sp && l.sp == l1.ep)
 }
 
-//是否交叉
+//是否穿过
 func (l *line) isAcrossLine(l1 *line) bool {
 	f1 := l.sp.x - l.ep.x
 	f2 := l.sp.y - l.ep.y

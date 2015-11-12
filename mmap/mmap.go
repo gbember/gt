@@ -63,22 +63,20 @@ func (m *Map) FindPath(p1 point, p2 point) []point {
 		if max > 2 {
 			//判断所有格子是否可以走(起点除外)
 			isLine := true
-			for i := 1; i < max && isLine; i++ {
-				am := make(map[uint16]bool)
+			for i := max - 1; i > 0 && isLine; i-- {
 				if aidList, ok := m.agm[gidList[i]]; ok {
 					//判断该线是否穿过这些区域不能穿过的线
 					aid := uint16(0)
 					for j := 0; j < len(aidList); j++ {
 						aid = aidList[j]
-						if !am[aid] {
-							if m.am[aid].isCrossNoPassLine(l) {
-								isLine = false
-								break
-							}
-							am[aid] = true
+						if m.am[aid].isCrossNoPassLine(l) {
+							log.Println("=================")
+							isLine = false
+							break
 						}
 					}
 				} else {
+					log.Println("=================")
 					isLine = false
 					break
 				}
@@ -92,6 +90,7 @@ func (m *Map) FindPath(p1 point, p2 point) []point {
 			return []point{p2}
 		}
 	}
+	log.Println("=================")
 	return nil
 }
 
@@ -126,14 +125,14 @@ func (m *Map) init() {
 
 func Test() {
 	m := new(Map)
-	m.gsize = 5
+	m.gsize = 50
 	m.id = 1
 	m.maxVNum = 1000
 	m.am = make(map[uint16]*area)
 	for k := uint16(1); k <= 10; k++ {
 		for i := uint16(1); i <= 10; i++ {
 			a := new(area)
-			a.id = i * k
+			a.id = k*10 + i
 			a.points = make([]point, 0, 4)
 			a.allLines = make([]*line, 0, 4)
 			a.lines = make(map[*line]bool)
@@ -159,13 +158,46 @@ func Test() {
 			a.lines[l] = true
 			a.allLines = append(a.allLines, l)
 
-			l = &line{sp: a.points[4-1], ep: a.points[0]}
+			l = &line{sp: a.points[3], ep: a.points[0]}
 			a.lines[l] = true
 			a.allLines = append(a.allLines, l)
 			m.am[a.id] = a
 		}
 	}
 	m.init()
-	points := m.FindPath(point{x: 30, y: 30}, point{x: 250, y: 270})
+	log.Println(m.agm)
+	log.Println(getGridNum(point{x: 308, y: 308}, m.gsize, m.maxVNum))
+	points := m.FindPath(point{x: 28, y: 28}, point{x: 308, y: 308})
 	log.Println(points)
+	//	fn := "tt.cpuprof"
+	//	f, err := os.Create(fn)
+	//	isProf := false
+	//	if err == nil {
+	//		err = pprof.StartCPUProfile(f)
+	//		if err == nil {
+	//			isProf = true
+	//		}
+	//	}
+
+	//	startTime := time.Now()
+	//	var max int64 = 1000000
+	//	for i := max; i > 0; i-- {
+	//		m.FindPath(point{x: 28, y: 28}, point{x: 308, y: 308})
+	//	}
+
+	//	l := &line{point{x: 28, y: 28}, point{x: 308, y: 308}}
+	//	ps := l.getAcossGridNums(5, 1000)
+	//	log.Println(len(ps))
+	//	startTime := time.Now()
+	//	var max int64 = 1000000
+	//	for i := max; i > 0; i-- {
+	//		l.getAcossGridNums(5, 1000)
+	//	}
+
+	//	td := time.Since(startTime)
+	//	log.Println(td)
+	//	log.Println(td.Nanoseconds() / max)
+	//	if isProf {
+	//		pprof.StopCPUProfile()
+	//	}
 }

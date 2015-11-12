@@ -22,11 +22,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 	//在同一行
 	if int(math.Abs(float64(gnum1-gnum2))) < gsize {
 		if gnum1 > gnum2 {
-			for ; gnum1 <= gnum2; gnum1++ {
-				gidList = append(gidList, gnum1)
+			for ; gnum2 <= gnum1; gnum2++ {
+				gidList = append(gidList, gnum2)
 			}
 		} else {
-			for ; gnum1 >= gnum2; gnum1-- {
+			for ; gnum1 <= gnum2; gnum1++ {
 				gidList = append(gidList, gnum1)
 			}
 		}
@@ -35,11 +35,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 	//在同一列
 	if gnum1%maxVNum == gnum2%maxVNum {
 		if gnum1 > gnum2 {
-			for ; gnum1 <= gnum2; gnum1 += maxVNum {
-				gidList = append(gidList, gnum1)
+			for ; gnum2 <= gnum1; gnum2 += maxVNum {
+				gidList = append(gidList, gnum2)
 			}
 		} else {
-			for ; gnum1 >= gnum2; gnum1 -= maxVNum {
+			for ; gnum1 <= gnum2; gnum1 += maxVNum {
 				gidList = append(gidList, gnum1)
 			}
 		}
@@ -49,7 +49,7 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 	y := l.ep.y - l.sp.y
 	tan := y / x
 	a := l.ep.y - tan*l.ep.x
-	gidMap := make(map[int]bool)
+	//	gidMap := make(map[int]bool)
 	gid := getGridNum(l.sp, gsize, maxVNum)
 	gidList = append(gidList, gid)
 	if x > 0 {
@@ -58,10 +58,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 			x = float32(i)
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
-			if !gidMap[gid] {
-				gidMap[gid] = true
-				gidList = append(gidList, gid)
-			}
+			gidList = append(gidList, gid)
+			//			if !gidMap[gid] {
+			//				gidMap[gid] = true
+			//				gidList = append(gidList, gid)
+			//			}
 		}
 	} else {
 		min := int(l.ep.x) / gsize * gsize
@@ -69,10 +70,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 			x = float32(i)
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
-			if !gidMap[gid] {
-				gidMap[gid] = true
-				gidList = append(gidList, gid)
-			}
+			gidList = append(gidList, gid)
+			//			if !gidMap[gid] {
+			//				gidMap[gid] = true
+			//				gidList = append(gidList, gid)
+			//			}
 		}
 	}
 	if l.ep.y-l.sp.y > 0 {
@@ -81,10 +83,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 			y = float32(i)
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
-			if !gidMap[gid] {
-				gidMap[gid] = true
-				gidList = append(gidList, gid)
-			}
+			gidList = append(gidList, gid)
+			//			if !gidMap[gid] {
+			//				gidMap[gid] = true
+			//				gidList = append(gidList, gid)
+			//			}
 		}
 	} else {
 		min := int(l.ep.y) / gsize * gsize
@@ -92,10 +95,11 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 			y = float32(i)
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
-			if !gidMap[gid] {
-				gidMap[gid] = true
-				gidList = append(gidList, gid)
-			}
+			gidList = append(gidList, gid)
+			//			if !gidMap[gid] {
+			//				gidMap[gid] = true
+			//				gidList = append(gidList, gid)
+			//			}
 		}
 	}
 
@@ -115,7 +119,7 @@ func (l *line) isAcrossLine(l1 *line) bool {
 	fD := (l1.ep.y-l.sp.y)*f1 - (l1.ep.x-l.sp.x)*f2
 	// A(x1, y1), B(x2, y2)的直线方程为：
 	// f(x, y) =  (y - y1) * (x1 - x2) - (x - x1) * (y1 - y2) = 0
-	if fC*fD > 0 {
+	if fC*fD >= 0 {
 		return false
 	}
 

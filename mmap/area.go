@@ -66,12 +66,11 @@ func loadArea(pk *Packet) (*area, error) {
 
 //构造区域不可穿过线与构造区域与区域关系
 func (a *area) makeLineAndRela(a1 *area) {
-
 	for i := 0; i < len(a.allLines); i++ {
 		for j := 0; j < len(a1.allLines); j++ {
 			if a.allLines[i].isEq(a1.allLines[j]) {
 				delete(a.lines, a.allLines[i])
-				delete(a1.lines, a1.allLines[i])
+				delete(a1.lines, a1.allLines[j])
 				a.areaMap[a1] = true
 				a1.areaMap[a] = true
 				break
@@ -84,10 +83,10 @@ func (a *area) makeLineAndRela(a1 *area) {
 func (a *area) isCrossNoPassLine(l *line) bool {
 	for l1, _ := range a.lines {
 		if l1.isAcrossLine(l) {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 //得到区域格子
@@ -113,7 +112,7 @@ func (a *area) getGrids(gsize int, maxVNum int) []int {
 			minY = t
 		}
 	}
-	ret := make([]int, 20)
+	ret := make([]int, 0, 20)
 	fgsize := float32(gsize)
 	var gid int = 0
 	for x := minX; x <= maxX; x += fgsize {

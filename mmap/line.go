@@ -120,3 +120,9 @@ func (l *line) isAcrossLines(ls []*line) bool {
 	}
 	return false
 }
+
+func (l *line) Distance() float32 {
+	x := l.ep.x - l.sp.x
+	y := l.ep.y - l.sp.y
+	return float32(math.Sqrt(float64(x*x + y*y)))
+}

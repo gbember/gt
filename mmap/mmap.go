@@ -128,12 +128,12 @@ func (m *Map) init() {
 
 func Test() {
 	m := new(Map)
-	m.gsize = 20
+	m.gsize = 50
 	m.id = 1
 	m.maxVNum = 1000
 	m.am = make(map[uint32]*area)
-	max1 := uint32(100)
-	max2 := uint32(100)
+	max1 := uint32(50)
+	max2 := uint32(50)
 	for k := uint32(1); k <= max1; k++ {
 		for i := uint32(1); i <= max2; i++ {
 			a := new(area)
@@ -141,7 +141,7 @@ func Test() {
 			a.points = make([]point, 0, 4)
 			a.allLines = make([]*line, 0, 4)
 			a.lineMap = make(map[*line]bool)
-			a.areaMap = make(map[point]*area)
+			a.areaMap = make(map[*line]*area)
 			p := point{x: float32(i) * 8, y: float32(k) * 8}
 			a.points = append(a.points, p)
 
@@ -177,12 +177,12 @@ func Test() {
 		}
 	}
 
-	points := m.FindPath(point{x: 28, y: 28}, point{x: 800, y: 755})
+	points := m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
 	log.Println(points)
 	startTime := time.Now()
 	var max int64 = 1000000
 	for i := max; i > 0; i-- {
-		m.FindPath(point{x: 28, y: 28}, point{x: 800, y: 755})
+		m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
 	}
 
 	//	l := &line{point{x: 28, y: 28}, point{x: 308, y: 308}}

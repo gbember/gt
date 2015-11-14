@@ -10,7 +10,7 @@ type area struct {
 	allLines []*line         //区域所有线段
 	lineMap  map[*line]bool  //区域不可穿过线段(为nil)
 	lines    []*line         //区域不可穿过线段
-	areaMap  map[point]*area //区域相邻区域(点相连)
+	areaMap  map[*line]*area //区域相邻区域(线相连)
 }
 
 func loadArea(pk *Packet) (*area, error) {
@@ -30,7 +30,7 @@ func loadArea(pk *Packet) (*area, error) {
 	a.points = make([]point, 0, pointNum)
 	a.allLines = make([]*line, 0, pointNum)
 	a.lineMap = make(map[*line]bool)
-	a.areaMap = make(map[point]*area)
+	a.areaMap = make(map[*line]*area)
 	//第一个
 	p := point{}
 	p.x, err = pk.readFloat32()
@@ -70,10 +70,8 @@ func (a *area) makeLineAndRela(a1 *area) {
 			if a.allLines[i].isEq(a1.allLines[j]) {
 				delete(a.lineMap, a.allLines[i])
 				delete(a1.lineMap, a1.allLines[j])
-				a.areaMap[a.allLines[i].sp] = a1
-				a.areaMap[a.allLines[i].ep] = a1
-				a1.areaMap[a.allLines[j].sp] = a
-				a1.areaMap[a.allLines[j].ep] = a
+				a.areaMap[a.allLines[i]] = a1
+				a1.areaMap[a1.allLines[j]] = a
 				break
 			}
 		}

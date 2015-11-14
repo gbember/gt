@@ -82,6 +82,9 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 	var ap1 *APoint
 	var li *line
 	for l, a := range ap.a.areaMap {
+		if ap.p == l.sp || ap.p == l.ep {
+			continue
+		}
 		a1 := a
 		if !mas.closeMap[l.sp] {
 			li = &line{l.sp, ap.p}

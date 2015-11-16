@@ -154,3 +154,9 @@ func (a *area) isContainGrid(gridNum int, gsize int, maxVNum int) bool {
 	}
 	return false
 }
+
+//区域是否包含某个点
+func (a *area) isContainPoint(p point) bool {
+	//TODO
+	return true
+}

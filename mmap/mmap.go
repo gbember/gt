@@ -57,39 +57,52 @@ func LoadMap(bs []byte) (*Map, error) {
 }
 
 //寻路
-func (m *Map) FindPath(p1 point, p2 point) []point {
-	egid := getGridNum(p2, m.gsize, m.maxVNum)
-	//终点可以走
-	if _, ok := m.agm[egid]; ok {
-		l := &line{sp: p1, ep: p2}
-		gidList := l.getAcossGridNums(m.gsize, m.maxVNum)
-		max := len(gidList)
-		if max > 2 {
-			//判断所有格子是否可以走(起点除外)
-			isLine := true
-			length := 0
-			for i := max - 1; i > 0 && isLine; i-- {
-				if aList, ok := m.agm[gidList[i]]; ok {
-					//判断该线是否穿过这些区域不能穿过的线
-					length = len(aList)
-					for j := 0; j < length; j++ {
-						if aList[j].isCrossNoPassLine(l) {
-							isLine = false
-							break
-						}
-					}
-				} else {
-					isLine = false
-					break
-				}
+func (m *Map) FindPath(p1 point, p2 point) ([]point, bool) {
+	a2 := m.getPointArea(p2)
+	if a2 == nil {
+		return nil, false
+	}
+	//	l := &line{sp: p1, ep: p2}
+	//	gidList := l.getAcossGridNums(m.gsize, m.maxVNum)
+	//	max := len(gidList)
+	//	if max > 2 {
+	//		//判断所有格子是否可以走(起点除外)
+	//		isLine := true
+	//		length := 0
+	//		for i := max - 1; i > 0 && isLine; i-- {
+	//			if aList, ok := m.agm[gidList[i]]; ok {
+	//				//判断该线是否穿过这些区域不能穿过的线
+	//				length = len(aList)
+	//				for j := 0; j < length; j++ {
+	//					if aList[j].isCrossNoPassLine(l) {
+	//						isLine = false
+	//						break
+	//					}
+	//				}
+	//			} else {
+	//				isLine = false
+	//				break
+	//			}
+	//		}
+	//		if isLine {
+	//			log.Println("直线")
+	//			return []point{p2}, true
+	//		}
+	//	}
+	a1 := m.getPointArea(p1)
+	//区域寻路
+	return findPath(m, p1, a1, p2, a2)
+}
+
+//得到点所在的某个区域(可能有多个  但只返回一个 返回nil表示点不在区域中)
+func (m *Map) getPointArea(p point) *area {
+	gid := getGridNum(p, m.gsize, m.maxVNum)
+	if as, ok := m.agm[gid]; ok {
+		length := len(as)
+		for i := 0; i < length; i++ {
+			if as[i].isContainPoint(p) {
+				return as[i]
 			}
-			if isLine {
-				return []point{p2}
-			}
-			//TODO 区域寻路
-			return nil
-		} else {
-			return []point{p2}
 		}
 	}
 	return nil
@@ -132,8 +145,8 @@ func Test() {
 	m.id = 1
 	m.maxVNum = 1000
 	m.am = make(map[uint32]*area)
-	max1 := uint32(50)
-	max2 := uint32(50)
+	max1 := uint32(25)
+	max2 := uint32(25)
 	for k := uint32(1); k <= max1; k++ {
 		for i := uint32(1); i <= max2; i++ {
 			a := new(area)
@@ -177,26 +190,20 @@ func Test() {
 		}
 	}
 
-	points := m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
-	log.Println(points)
-	startTime := time.Now()
-	var max int64 = 1000000
-	for i := max; i > 0; i-- {
-		m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
+	points, ok := m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
+	if ok {
+		log.Println(points)
+		startTime := time.Now()
+		var max int64 = 1000000
+		for i := max; i > 0; i-- {
+			m.FindPath(point{x: 28, y: 28}, point{x: 400, y: 305})
+		}
+		td := time.Since(startTime)
+		log.Println(td)
+		log.Println(td.Nanoseconds() / max)
+	} else {
+		log.Println("终点不可达")
 	}
-
-	//	l := &line{point{x: 28, y: 28}, point{x: 308, y: 308}}
-	//	ps := l.getAcossGridNums(m.gsize, m.maxVNum)
-	//	log.Println(len(ps))
-	//	startTime := time.Now()
-	//	var max int64 = 1000000
-	//	for i := max; i > 0; i-- {
-	//		l.getAcossGridNums(m.gsize, m.maxVNum)
-	//	}
-
-	td := time.Since(startTime)
-	log.Println(td)
-	log.Println(td.Nanoseconds() / max)
 
 	if isProf {
 		pprof.StopCPUProfile()

@@ -56,7 +56,9 @@ func (ol *OpenList) getMin() float32 {
 
 func findPath(m *Map, p1 point, a1 *area, p2 point, a2 *area) ([]point, bool) {
 	mas := &MapAStar{
-		openList: new(OpenList),
+		openList: &OpenList{
+			apList: make([]*APoint, 0, 20),
+		},
 		closeMap: make(map[point]bool),
 		origP:    p1,
 		origA:    a1,
@@ -106,7 +108,11 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 	}
 
 	for l, a := range ap.a.areaMap {
-		if ap.p != l.sp && !mas.closeMap[l.sp] {
+		if ap.p == l.sp || ap.p == l.ep {
+			continue
+		}
+
+		if !mas.closeMap[l.sp] {
 			li = &line{l.sp, ap.p}
 			ap1 = &APoint{
 				a:        a,
@@ -117,7 +123,7 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 			}
 			heap.Push(mas.openList, ap1)
 		}
-		if ap.p != l.ep && !mas.closeMap[l.ep] {
+		if !mas.closeMap[l.ep] {
 			li = &line{l.ep, ap.p}
 			ap1 = &APoint{
 				a:        a,

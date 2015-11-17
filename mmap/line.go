@@ -10,15 +10,15 @@ type line struct {
 }
 
 //得到线段穿过的格子
-func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
+func (l *line) getAcossGridNums(gsize int32, maxVNum int32) []int32 {
 	gnum1 := getGridNum(l.sp, gsize, maxVNum)
 	gnum2 := getGridNum(l.ep, gsize, maxVNum)
 	if gnum1 == gnum2 {
-		return []int{gnum1}
+		return []int32{gnum1}
 	}
-	gidList := make([]int, 0, 20)
+	gidList := make([]int32, 0, 20)
 	//在同一行
-	if int(math.Abs(float64(gnum1-gnum2))) < gsize {
+	if int32(math.Abs(float64(gnum1-gnum2))) < gsize {
 		if gnum1 > gnum2 {
 			for ; gnum2 <= gnum1; gnum2++ {
 				gidList = append(gidList, gnum2)
@@ -47,42 +47,37 @@ func (l *line) getAcossGridNums(gsize int, maxVNum int) []int {
 	y := l.ep.y - l.sp.y
 	tan := y / x
 	a := l.ep.y - tan*l.ep.x
-	fgsize := float32(gsize)
 	gid := getGridNum(l.sp, gsize, maxVNum)
 	gidList = append(gidList, gid)
 	if x > 0 {
-		max := float32(int(l.ep.x) / gsize * gsize)
-		x = float32(int(l.sp.x)/gsize*gsize + gsize)
-		//		log.Println(x, max, gsize)
-		for ; x <= max; x += fgsize {
+		max := l.ep.x / gsize * gsize
+		x = l.sp.x/gsize*gsize + gsize
+		for ; x <= max; x += gsize {
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
 		}
 	} else {
-		min := float32(int(l.ep.x) / gsize * gsize)
-		x = float32(int(l.sp.x)/gsize*gsize - gsize)
-		//		log.Println(x, min, gsize)
-		for ; x >= min; x -= fgsize {
+		min := l.ep.x / gsize * gsize
+		x = l.sp.x/gsize*gsize - gsize
+		for ; x >= min; x -= gsize {
 			y = tan*x + a
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
 		}
 	}
 	if l.ep.y-l.sp.y > 0 {
-		max := float32(int(l.ep.y) / gsize * gsize)
-		y = float32(int(l.sp.y)/gsize*gsize + gsize)
-		//		log.Println(y, max, gsize)
-		for ; y <= max; y += fgsize {
+		max := l.ep.y / gsize * gsize
+		y = l.sp.y/gsize*gsize + gsize
+		for ; y <= max; y += gsize {
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
 		}
 	} else {
-		min := float32(int(l.ep.y) / gsize * gsize)
-		y = float32(int(l.sp.y)/gsize*gsize - gsize)
-		//		log.Println(y, min, gsize)
-		for ; y >= min; y -= fgsize {
+		min := l.ep.y / gsize * gsize
+		y = l.sp.y/gsize*gsize - gsize
+		for ; y >= min; y -= gsize {
 			x = (y - a) / tan
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			gidList = append(gidList, gid)
@@ -111,7 +106,7 @@ func (l *line) isAcrossLine(l1 *line) bool {
 	return true
 }
 
-//与N条线至少有一条交叉
+//与N条线至少有一条交叉(起点在另一条线上不算交叉)
 func (l *line) isAcrossLines(ls []*line) bool {
 	for i := 0; i < len(ls); i++ {
 		if l.isAcrossLine(ls[i]) {
@@ -121,8 +116,8 @@ func (l *line) isAcrossLines(ls []*line) bool {
 	return false
 }
 
-func (l *line) Distance() float32 {
+func (l *line) Distance2() int32 {
 	x := l.ep.x - l.sp.x
 	y := l.ep.y - l.sp.y
-	return float32(math.Sqrt(float64(x*x + y*y)))
+	return x*x + y*y
 }

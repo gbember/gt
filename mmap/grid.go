@@ -5,6 +5,6 @@ package mmap
 //p 点
 //gsize 正方形格子的宽
 //maxVNum 横向最大格子数
-func getGridNum(p point, gsize int, maxVNum int) int {
-	return int(p.x)/gsize + 1 + int(p.y)/gsize*maxVNum
+func getGridNum(p point, gsize int32, maxVNum int32) int32 {
+	return p.x/gsize + 1 + p.y/gsize*maxVNum
 }

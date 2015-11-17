@@ -14,9 +14,9 @@ type Map struct {
 	id      uint16           //地图id
 	am      map[uint32]*area //地图所有区域
 	alist   []*area
-	agm     map[int][]*area //格子与区域对应关系(一个格子可能在多个区域中)
-	maxVNum int             //横向格子最大数量
-	gsize   int             //格子大小
+	agm     map[int32][]*area //格子与区域对应关系(一个格子可能在多个区域中)
+	maxVNum int32             //横向格子最大数量
+	gsize   int32             //格子大小
 }
 
 func LoadMap(bs []byte) (*Map, error) {
@@ -39,8 +39,8 @@ func LoadMap(bs []byte) (*Map, error) {
 	}
 	m := new(Map)
 	m.id = id
-	m.maxVNum = int(maxVNum)
-	m.gsize = int(gsize)
+	m.maxVNum = int32(maxVNum)
+	m.gsize = int32(gsize)
 	m.am = make(map[uint32]*area)
 	for i := areaNum; i > 0; i-- {
 		a, err := loadArea(pk)
@@ -111,7 +111,7 @@ func (m *Map) getPointArea(p point) *area {
 //地图数据初始化
 func (m *Map) init() {
 	//1 构造格子区域关系
-	m.agm = make(map[int][]*area)
+	m.agm = make(map[int32][]*area)
 	length := len(m.am)
 	alist := make([]*area, 0, length)
 	for _, a := range m.am {
@@ -214,7 +214,8 @@ func loadMap_1() *Map {
 	addArea(m.am, 7, point{425, 125}, point{380, 134}, point{368, 182}, point{420, 186})
 	addArea(m.am, 8, point{420, 186}, point{368, 182}, point{349, 216}, point{403, 217})
 	addArea(m.am, 9, point{403, 217}, point{349, 216}, point{291, 280}, point{347, 291})
-	addArea(m.am, 10, point{347, 291}, point{291, 280}, point{246, 318}, point{247, 340})
+	addArea(m.am, 10, point{347, 291}, point{291, 280}, point{246, 318}, point{347, 340})
+	addArea(m.am, 11, point{347, 340}, point{246, 318}, point{213, 350}, point{236, 371}, point{358, 382})
 
 	m.init()
 	return m

@@ -33,22 +33,22 @@ func loadArea(pk *Packet) (*area, error) {
 	a.areaMap = make(map[*line]*area)
 	//第一个
 	p := point{}
-	p.x, err = pk.readFloat32()
+	p.x, err = pk.readInt32()
 	if err != nil {
 		return nil, err
 	}
-	p.y, err = pk.readFloat32()
+	p.y, err = pk.readInt32()
 	if err != nil {
 		return nil, err
 	}
 	a.points = append(a.points, p)
 	for i := uint16(1); i < pointNum; i++ {
 		p = point{}
-		p.x, err = pk.readFloat32()
+		p.x, err = pk.readInt32()
 		if err != nil {
 			return nil, err
 		}
-		p.y, err = pk.readFloat32()
+		p.y, err = pk.readInt32()
 		if err != nil {
 			return nil, err
 		}
@@ -89,12 +89,12 @@ func (a *area) isCrossNoPassLine(l *line) bool {
 }
 
 //得到区域格子
-func (a *area) getGrids(gsize int, maxVNum int) []int {
-	var maxX float32 = a.points[0].x
-	var maxY float32 = a.points[0].y
-	var minX float32 = a.points[0].x
-	var minY float32 = a.points[0].y
-	var t float32 = 0
+func (a *area) getGrids(gsize int32, maxVNum int32) []int32 {
+	var maxX int32 = a.points[0].x
+	var maxY int32 = a.points[0].y
+	var minX int32 = a.points[0].x
+	var minY int32 = a.points[0].y
+	var t int32 = 0
 	for i := 1; i < len(a.points); i++ {
 		t = a.points[i].x
 		if t > maxX {
@@ -111,11 +111,10 @@ func (a *area) getGrids(gsize int, maxVNum int) []int {
 			minY = t
 		}
 	}
-	ret := make([]int, 0, 20)
-	fgsize := float32(gsize)
-	var gid int = 0
-	for x := float32(int(minX) / gsize * gsize); x <= maxX; x += fgsize {
-		for y := float32(int(minY) / gsize * gsize); y <= maxY; y += fgsize {
+	ret := make([]int32, 0, 20)
+	var gid int32 = 0
+	for x := minX / gsize * gsize; x <= maxX; x += gsize {
+		for y := minY / gsize * gsize; y <= maxY; y += gsize {
 			gid = getGridNum(point{x: x, y: y}, gsize, maxVNum)
 			if a.isContainGrid(gid, gsize, maxVNum) {
 				ret = append(ret, gid)
@@ -126,29 +125,25 @@ func (a *area) getGrids(gsize int, maxVNum int) []int {
 }
 
 //是否包含格子(4条线至少有一条穿过区域)
-func (a *area) isContainGrid(gridNum int, gsize int, maxVNum int) bool {
+func (a *area) isContainGrid(gridNum int32, gsize int32, maxVNum int32) bool {
 	minY := gridNum / maxVNum * gsize
 	maxY := minY + gsize
 	minX := ((gridNum - 1) % maxVNum) * gsize
 	maxX := minX + gsize
 
-	fminY := float32(minY)
-	fmaxY := float32(maxY)
-	fminX := float32(minX)
-	fmaxX := float32(maxX)
-	l := &line{sp: point{x: fminX, y: fminY}, ep: point{x: fmaxX, y: fminY}}
+	l := &line{sp: point{x: minX, y: minY}, ep: point{x: maxX, y: minY}}
 	if l.isAcrossLines(a.allLines) {
 		return true
 	}
-	l = &line{sp: point{x: fmaxX, y: fminY}, ep: point{x: fmaxX, y: fmaxY}}
+	l = &line{sp: point{x: maxX, y: minY}, ep: point{x: maxX, y: maxY}}
 	if l.isAcrossLines(a.allLines) {
 		return true
 	}
-	l = &line{sp: point{x: fmaxX, y: fmaxY}, ep: point{x: fminX, y: fmaxY}}
+	l = &line{sp: point{x: maxX, y: maxY}, ep: point{x: minX, y: maxY}}
 	if l.isAcrossLines(a.allLines) {
 		return true
 	}
-	l = &line{sp: point{x: fminX, y: fmaxY}, ep: point{x: fminX, y: fminY}}
+	l = &line{sp: point{x: minX, y: maxY}, ep: point{x: minX, y: minY}}
 	if l.isAcrossLines(a.allLines) {
 		return true
 	}
@@ -157,6 +152,30 @@ func (a *area) isContainGrid(gridNum int, gsize int, maxVNum int) bool {
 
 //区域是否包含某个点
 func (a *area) isContainPoint(p point) bool {
-	//TODO
+	//	l := &line{p, point{math.MaxInt32, math.MaxInt32}}
+	//	return l.isAcrossLines(a.allLines)
+
+	maxIndex := len(a.points) - 1
+	p1 := a.points[maxIndex]
+	p2 := a.points[0]
+
+	f := (p2.x-p1.x)*(p.y-p1.y) - (p.x-p1.x)*(p2.y-p1.y)
+	if f > 0 {
+		return false
+	}
+	p1 = a.points[0]
+	for i := 1; i <= maxIndex; i++ {
+		p2 = a.points[i]
+		f = (p2.x-p1.x)*(p.y-p1.y) - (p.x-p1.x)*(p2.y-p1.y)
+		if f > 0 {
+			return false
+		}
+		p1 = p2
+	}
+
 	return true
 }
+
+//func mul(p point, p1 point, p2 point) int32 {
+//	return (p2.x-p1.x)*(p.y-p1.y) - (p.x-p1.x)*(p2.y-p1.y)
+//}

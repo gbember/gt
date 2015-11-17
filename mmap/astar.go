@@ -6,7 +6,7 @@ import "container/heap"
 type APoint struct {
 	p        point
 	a        *area
-	size     float32
+	size     int32
 	length   int
 	parentAP *APoint
 }
@@ -44,8 +44,8 @@ func (ol *OpenList) Pop() interface{} {
 	ol.apList = ol.apList[:ol.length]
 	return x
 }
-func (ol *OpenList) getMin() float32 {
-	var min float32 = 9999999999
+func (ol *OpenList) getMin() int32 {
+	var min int32 = 999999999
 	for i := 0; i < ol.length; i++ {
 		if ol.apList[i].size < min {
 			min = ol.apList[i].size
@@ -99,7 +99,7 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 		ap1 = &APoint{
 			a:        ap.a,
 			p:        mas.destP,
-			size:     ap.size + li.Distance(),
+			size:     ap.size + li.Distance2(),
 			parentAP: ap,
 			length:   ap.length + 1,
 		}
@@ -111,24 +111,25 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 		if ap.p == l.sp || ap.p == l.ep {
 			continue
 		}
-
+		li = &line{mas.destP, ap.p}
+		s1 := li.Distance2()
 		if !mas.closeMap[l.sp] {
-			li = &line{l.sp, ap.p}
+			li.sp = l.sp
 			ap1 = &APoint{
 				a:        a,
 				p:        l.sp,
-				size:     ap.size + li.Distance(),
+				size:     li.Distance2() + s1*5,
 				parentAP: ap,
 				length:   ap.length + 1,
 			}
 			heap.Push(mas.openList, ap1)
 		}
 		if !mas.closeMap[l.ep] {
-			li = &line{l.ep, ap.p}
+			li.sp = l.ep
 			ap1 = &APoint{
 				a:        a,
 				p:        l.ep,
-				size:     ap.size + li.Distance(),
+				size:     li.Distance2() + s1*5,
 				parentAP: ap,
 				length:   ap.length + 1,
 			}

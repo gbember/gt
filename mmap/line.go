@@ -121,3 +121,8 @@ func (l *line) Distance2() int32 {
 	y := l.ep.y - l.sp.y
 	return x*x + y*y
 }
+func (l *line) Distance() float64 {
+	x := l.ep.x - l.sp.x
+	y := l.ep.y - l.sp.y
+	return math.Sqrt(float64(x*x + y*y))
+}

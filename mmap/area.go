@@ -5,12 +5,13 @@ import "errors"
 
 //区域
 type area struct {
-	id       uint32          //区域ID
-	points   []point         //区域定点
-	allLines []*line         //区域所有线段
-	lineMap  map[*line]bool  //区域不可穿过线段(为nil)
-	lines    []*line         //区域不可穿过线段
-	areaMap  map[*line]*area //区域相邻区域(线相连)
+	id       uint32                  //区域ID
+	points   []point                 //区域定点
+	allLines []*line                 //区域所有线段
+	lineMap  map[*line]bool          //区域不可穿过线段(为nil)
+	lines    []*line                 //区域不可穿过线段
+	areaMap  map[*line]*area         //区域相邻区域(线相连)
+	fpMap    map[*area][]*FPointPath //缓存到区域的路径
 }
 
 func loadArea(pk *Packet) (*area, error) {
@@ -60,6 +61,7 @@ func loadArea(pk *Packet) (*area, error) {
 	l := &line{sp: a.points[pointNum-1], ep: a.points[0]}
 	a.lineMap[l] = true
 	a.allLines = append(a.allLines, l)
+	a.fpMap = make(map[*area][]*FPointPath)
 	return a, nil
 }
 

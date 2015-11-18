@@ -90,8 +90,45 @@ func (m *Map) FindPath(p1 point, p2 point) ([]point, bool) {
 	//		}
 	//	}
 	a1 := m.getPointArea(p1)
-	//区域寻路
-	return findPath(m, p1, a1, p2, a2)
+	if a1 == a2 {
+		return []point{p2}, true
+	}
+
+	if fppList, ok := a1.fpMap[a2]; ok {
+		length := len(fppList)
+		if length == 0 {
+			return nil, false
+		}
+		l := &line{}
+		size := float64(0)
+		minSize := float64(9999999999999999999999999999)
+		minIndex := 0
+		for i := 0; i < length; i++ {
+			l.sp = p1
+			l.ep = fppList[i].ps[0]
+			size = fppList[i].size + l.Distance()
+			l.sp = p2
+			l.ep = fppList[i].ps[len(fppList[i].ps)-1]
+			size += l.Distance()
+			if size <= minSize {
+				minSize = size
+				minIndex = i
+			}
+		}
+		lps := len(fppList[minIndex].ps)
+		if p2 == fppList[minIndex].ps[lps-1] {
+			ps := make([]point, lps, lps)
+			copy(ps, fppList[minIndex].ps)
+			return ps, true
+		} else {
+			ps := make([]point, lps+1, lps+1)
+			copy(ps, fppList[minIndex].ps)
+			ps[lps] = p2
+			return ps, true
+		}
+
+	}
+	return nil, false
 }
 
 //得到点所在的某个区域(可能有多个  但只返回一个 返回nil表示点不在区域中)
@@ -137,6 +174,54 @@ func (m *Map) init() {
 
 	m.alist = alist
 	m.am = nil
+
+	for i := 0; i < length; i++ {
+		for j := 0; j < length; j++ {
+			if i != j {
+
+				//				if alist[i].id == 1 && alist[j].id == 30 {
+				//					log.Println("11111111111")
+				//				}
+
+				//				if alist[i].id == 30 && alist[j].id == 1 {
+				//					log.Println("2222222222222")
+				//				}
+
+				if _, ok := alist[i].fpMap[alist[j]]; !ok {
+					length := len(alist[i].areaMap) * 2 * len(alist[j].areaMap) * 2
+					pps1 := make([]*FPointPath, 0, length)
+					pps2 := make([]*FPointPath, 0, length)
+
+					for l1, a1 := range alist[i].areaMap {
+						for l2, _ := range alist[j].areaMap {
+							fpp := findPath(m, l1.sp, a1, l2.sp, alist[j])
+							if fpp != nil {
+								pps1 = append(pps1, fpp)
+								pps2 = append(pps2, fpp.reverse())
+							}
+							fpp = findPath(m, l1.sp, a1, l2.ep, alist[j])
+							if fpp != nil {
+								pps1 = append(pps1, fpp)
+								pps2 = append(pps2, fpp.reverse())
+							}
+							fpp = findPath(m, l1.ep, a1, l2.sp, alist[j])
+							if fpp != nil {
+								pps1 = append(pps1, fpp)
+								pps2 = append(pps2, fpp.reverse())
+							}
+							fpp = findPath(m, l1.ep, a1, l2.ep, alist[j])
+							if fpp != nil {
+								pps1 = append(pps1, fpp)
+								pps2 = append(pps2, fpp.reverse())
+							}
+						}
+					}
+					alist[i].fpMap[alist[j]] = pps1
+					alist[j].fpMap[alist[i]] = pps2
+				}
+			}
+		}
+	}
 }
 
 func Test() {
@@ -151,14 +236,16 @@ func Test() {
 			isProf = true
 		}
 	}
+	destP := point{170, 889}
+	orgiP := point{x: 101, y: 86}
 
-	points, ok := m.FindPath(point{x: 101, y: 86}, point{x: 328, y: 324})
+	ps, ok := m.FindPath(orgiP, destP)
 	if ok {
-		log.Println(points)
+		log.Println(ps)
 		startTime := time.Now()
-		var max int64 = 10000
+		var max int64 = 1000000
 		for i := max; i > 0; i-- {
-			m.FindPath(point{x: 101, y: 86}, point{x: 328, y: 324})
+			m.FindPath(orgiP, destP)
 		}
 		td := time.Since(startTime)
 		log.Println(td)
@@ -183,6 +270,7 @@ func addArea(am map[uint32]*area, id uint32, ps ...point) {
 	a.allLines = make([]*line, 0, length)
 	a.lineMap = make(map[*line]bool)
 	a.areaMap = make(map[*line]*area)
+	a.fpMap = make(map[*area][]*FPointPath)
 
 	p := ps[0]
 	l := &line{ps[length-1], p}
@@ -216,6 +304,25 @@ func loadMap_1() *Map {
 	addArea(m.am, 9, point{403, 217}, point{349, 216}, point{291, 280}, point{347, 291})
 	addArea(m.am, 10, point{347, 291}, point{291, 280}, point{246, 318}, point{347, 340})
 	addArea(m.am, 11, point{347, 340}, point{246, 318}, point{213, 350}, point{236, 371}, point{358, 382})
+	addArea(m.am, 12, point{236, 371}, point{213, 350}, point{140, 380}, point{170, 397})
+	addArea(m.am, 13, point{170, 397}, point{140, 380}, point{114, 424}, point{164, 435})
+	addArea(m.am, 14, point{164, 435}, point{114, 424}, point{68, 458}, point{119, 463})
+	addArea(m.am, 15, point{119, 463}, point{68, 458}, point{123, 515}, point{164, 513})
+	addArea(m.am, 16, point{164, 513}, point{123, 515}, point{122, 552}, point{216, 549})
+	addArea(m.am, 17, point{164, 513}, point{216, 549}, point{268, 503}, point{238, 491})
+	addArea(m.am, 18, point{122, 552}, point{123, 515}, point{75, 507}, point{71, 524}, point{74, 544})
+	addArea(m.am, 19, point{74, 544}, point{71, 524}, point{41, 540}, point{18, 579}, point{48, 576})
+	addArea(m.am, 20, point{48, 576}, point{18, 579}, point{46, 619}, point{91, 619}, point{86, 599})
+	addArea(m.am, 21, point{86, 599}, point{91, 619}, point{148, 601}, point{136, 585})
+	addArea(m.am, 22, point{216, 549}, point{122, 552}, point{136, 585}, point{148, 601}, point{203, 585})
+	addArea(m.am, 23, point{216, 549}, point{203, 585}, point{213, 606}, point{246, 587})
+	addArea(m.am, 24, point{246, 587}, point{213, 606}, point{259, 627}, point{280, 611})
+	addArea(m.am, 25, point{280, 611}, point{259, 627}, point{302, 709}, point{334, 694})
+	addArea(m.am, 26, point{334, 694}, point{302, 709}, point{340, 758}, point{394, 743})
+	addArea(m.am, 27, point{394, 743}, point{340, 758}, point{404, 835}, point{456, 836}, point{447, 795})
+	addArea(m.am, 28, point{404, 835}, point{340, 758}, point{306, 814}, point{335, 898})
+	addArea(m.am, 29, point{335, 898}, point{306, 814}, point{226, 874}, point{223, 899})
+	addArea(m.am, 30, point{223, 899}, point{226, 874}, point{123, 874}, point{118, 896})
 
 	m.init()
 	return m

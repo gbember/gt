@@ -6,7 +6,7 @@ import "container/heap"
 type APoint struct {
 	p        point
 	a        *area
-	size     int32
+	size     float64
 	length   int
 	parentAP *APoint
 }
@@ -44,8 +44,8 @@ func (ol *OpenList) Pop() interface{} {
 	ol.apList = ol.apList[:ol.length]
 	return x
 }
-func (ol *OpenList) getMin() int32 {
-	var min int32 = 999999999
+func (ol *OpenList) getMin() float64 {
+	var min float64 = 99999999999999
 	for i := 0; i < ol.length; i++ {
 		if ol.apList[i].size < min {
 			min = ol.apList[i].size
@@ -54,7 +54,25 @@ func (ol *OpenList) getMin() int32 {
 	return min
 }
 
-func findPath(m *Map, p1 point, a1 *area, p2 point, a2 *area) ([]point, bool) {
+type FPointPath struct {
+	size float64
+	ps   []point
+}
+
+//反转路径点
+func (fpp *FPointPath) reverse() *FPointPath {
+	nfpp := new(FPointPath)
+	nfpp.size = fpp.size
+	l := len(fpp.ps)
+	nfpp.ps = make([]point, l, l)
+	maxIndex := l - 1
+	for i := 0; i < l; i++ {
+		nfpp.ps[i] = fpp.ps[maxIndex-i]
+	}
+	return nfpp
+}
+
+func findPath(m *Map, p1 point, a1 *area, p2 point, a2 *area) *FPointPath {
 	mas := &MapAStar{
 		openList: &OpenList{
 			apList: make([]*APoint, 0, 20),
@@ -72,23 +90,25 @@ func findPath(m *Map, p1 point, a1 *area, p2 point, a2 *area) ([]point, bool) {
 		length: 1,
 	}
 	heap.Push(mas.openList, ap)
+	var apx interface{}
 	for mas.openList.length > 0 {
-		apx := heap.Pop(mas.openList)
+		apx = heap.Pop(mas.openList)
 		ap = apx.(*APoint)
 		if ap.p == mas.destP {
+			fpp := new(FPointPath)
 			ps := make([]point, 0, ap.length)
 			for ap != nil {
+				fpp.size += ap.size
 				ps = append(ps, ap.p)
 				ap = ap.parentAP
 			}
-			//TODO 反序
-			return ps, true
+			fpp.ps = ps
+			return fpp.reverse()
 		}
-		mas.addCloseList(ap.p)
 		mas.addNextAPOpenList(ap)
-
+		mas.addCloseList(ap.p)
 	}
-	return nil, false
+	return nil
 }
 
 func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
@@ -99,7 +119,7 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 		ap1 = &APoint{
 			a:        ap.a,
 			p:        mas.destP,
-			size:     ap.size + li.Distance2(),
+			size:     ap.size + li.Distance(),
 			parentAP: ap,
 			length:   ap.length + 1,
 		}
@@ -108,32 +128,37 @@ func (mas *MapAStar) addNextAPOpenList(ap *APoint) {
 	}
 
 	for l, a := range ap.a.areaMap {
-		if ap.p == l.sp || ap.p == l.ep {
-			continue
-		}
-		li = &line{mas.destP, ap.p}
-		s1 := li.Distance2()
 		if !mas.closeMap[l.sp] {
-			li.sp = l.sp
-			ap1 = &APoint{
-				a:        a,
-				p:        l.sp,
-				size:     li.Distance2() + s1*5,
-				parentAP: ap,
-				length:   ap.length + 1,
+			if l.sp == ap.p {
+				ap.a = a
+				heap.Push(mas.openList, ap)
+			} else {
+				li = &line{l.sp, ap.p}
+				ap1 = &APoint{
+					a:        a,
+					p:        l.sp,
+					size:     ap.size + li.Distance(),
+					parentAP: ap,
+					length:   ap.length + 1,
+				}
+				heap.Push(mas.openList, ap1)
 			}
-			heap.Push(mas.openList, ap1)
 		}
 		if !mas.closeMap[l.ep] {
-			li.sp = l.ep
-			ap1 = &APoint{
-				a:        a,
-				p:        l.ep,
-				size:     li.Distance2() + s1*5,
-				parentAP: ap,
-				length:   ap.length + 1,
+			if l.ep == ap.p {
+				ap.a = a
+				heap.Push(mas.openList, ap)
+			} else {
+				li = &line{l.ep, ap.p}
+				ap1 = &APoint{
+					a:        a,
+					p:        l.ep,
+					size:     ap.size + li.Distance(),
+					parentAP: ap,
+					length:   ap.length + 1,
+				}
+				heap.Push(mas.openList, ap1)
 			}
-			heap.Push(mas.openList, ap1)
 		}
 	}
 

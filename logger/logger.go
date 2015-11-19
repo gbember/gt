@@ -100,6 +100,20 @@ func Error(format string, args ...interface{}) {
 	}
 }
 
+//直接打印
+func Print(format string, args ...interface{}) {
+	if log != nil {
+		log.Print(format, args)
+	}
+}
+
+func ErrorDepth(depth int, format string, args ...interface{}) {
+	if log != nil && log.logLevel >= ERROR {
+		str := fmt.Sprintf(format, args...)
+		log.output(depth, "ERROR", str)
+	}
+}
+
 //系统日志
 func Critical(format string, args ...interface{}) {
 	str := fmt.Sprintf(format, args...)
@@ -113,6 +127,11 @@ func (l *logger) Debug(format string, args ...interface{}) {
 		str := fmt.Sprintf(format, args...)
 		l.output(2, "DEBUG", str)
 	}
+}
+
+//直接打印
+func (l *logger) Print(format string, args ...interface{}) {
+	l.baseLog.Output(0, fmt.Sprintf(format, args))
 }
 
 //信息日志

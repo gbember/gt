@@ -1,84 +1,77 @@
-// timer.go
 package timer
 
-import "time"
+import (
+	"container/heap"
+	"time"
+)
 
-type Timer struct {
-	T     *time.Timer
-	tf    *timerFun
-	tfMap map[*timerFun]bool
-}
+const (
+	_DEFAULT_TIMER_D = time.Hour * 24
+)
 
 type timerFun struct {
 	d   int64
 	fun func()
 }
 
-func NewTimer() *Timer {
-	timer := new(Timer)
-	timer.T = &time.Timer{C: make(chan time.Time, 1)}
-	timer.tfMap = make(map[*timerFun]bool)
-	return timer
+type timerFunList []*timerFun
+
+func (this timerFunList) Len() int           { return len(this) }
+func (this timerFunList) Less(i, j int) bool { return this[i].d < this[j].d }
+func (this timerFunList) Swap(i, j int)      { this[i], this[j] = this[j], this[i] }
+func (this *timerFunList) Push(x interface{}) {
+	*this = append(*this, x.(*timerFun))
+}
+func (this *timerFunList) Pop() interface{} {
+	old := *this
+	n := len(old)
+	x := old[n-1]
+	*this = old[0 : n-1]
+	return x
 }
 
-func (timer *Timer) AddFun(d time.Duration, fun func()) {
+type TimerFunQueue struct {
+	*time.Timer
+	d   int64
+	tfl timerFunList
+}
+
+func NewTimerFunQueue() *TimerFunQueue {
+	tfq := new(TimerFunQueue)
+	heap.Init(&tfq.tfl)
+	tfq.defaultSet()
+	return tfq
+}
+
+func (tfq *TimerFunQueue) defaultSet() {
+	tfq.d = 0
+	tfq.tfl = tfq.tfl[0:]
+	tfq.Timer = time.NewTimer(_DEFAULT_TIMER_D)
+}
+
+func (tfq *TimerFunQueue) AddAfterTimerFun(d time.Duration, fun func()) {
 	if d <= 0 {
 		fun()
-	} else {
-		rd := time.Now().Add(d).UnixNano()
-		if timer.tf == nil {
-			timer.tf = &timerFun{d: rd, fun: fun}
-			timer.T = time.NewTimer(d)
-		} else {
-			if timer.tf.d > rd {
-				timer.T.Stop()
-				timer.tfMap[timer.tf] = true
-				timer.tf = &timerFun{d: rd, fun: fun}
-				timer.T = time.NewTimer(d)
-			} else {
-				timer.tfMap[&timerFun{d: rd, fun: fun}] = true
-			}
-		}
+		return
 	}
+	rd := time.Now().Add(d).UnixNano()
+	heap.Push(&tfq.tfl, &timerFun{d: rd, fun: fun})
+	if tfq.d == 0 || rd < tfq.d {
+		tfq.d = rd
+		tfq.Reset(d)
+	}
+
 }
 
-func (timer *Timer) Run() {
-	timer.tf.fun()
-	if len(timer.tfMap) > 0 {
-		now := time.Now().UnixNano()
-		ls := make([]*timerFun, 0, len(timer.tfMap))
-		var minTF *timerFun
-		for tf, _ := range timer.tfMap {
-			if tf.d <= now {
-				ls = append(ls, tf)
-			} else if minTF == nil || tf.d < minTF.d {
-				minTF = tf
-			}
+func (tfq *TimerFunQueue) Run() {
+	for tfq.tfl.Len() > 0 {
+		tf := heap.Pop(&tfq.tfl).(*timerFun)
+		if tf.d > tfq.d {
+			tfq.d = 0
+			tfq.AddAfterTimerFun(time.Duration(tf.d-time.Now().UnixNano()), tf.fun)
+			return
 		}
-		if minTF != nil {
-			delete(timer.tfMap, minTF)
-			timer.tf = minTF
-			timer.T = time.NewTimer(time.Duration(timer.tf.d - now))
-		}
-		for _, tf := range ls {
-			delete(timer.tfMap, tf)
-			tf.fun()
-		}
+		tf.fun()
 	}
-}
-
-func (timer *Timer) Reset() {
-	if timer.tf != nil {
-		t := timer.T
-		timer.T = &time.Timer{C: make(chan time.Time, 1)}
-		timer.tf = nil
-		timer.tfMap = make(map[*timerFun]bool)
-		t.Stop()
-	}
-}
-
-func (timer *Timer) Stop() {
-	if timer.tf == nil {
-		timer.T.Stop()
-	}
+	tfq.defaultSet()
 }

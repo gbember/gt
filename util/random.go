@@ -17,6 +17,17 @@ const (
 	F_PRIME3 float32 = 30323
 )
 
+type Rand interface {
+	//并发不安全的随机0-1之间的小数(包括0不包括1)
+	UniformFloat() float32
+	//并发安全的随机0-1之间的小数(包括0不包括1)
+	SyncUniformFloat() float32
+	//并发不安全的随机min-max之间的小数(包括min和max)
+	UniformInt(min int, max int) int
+	//并发不安全的随机max-max之间的小数(包括min和max)
+	SyncUniformInt(min int, max int) int
+}
+
 type _rand struct {
 	_mut   sync.Mutex
 	prime1 int
@@ -25,23 +36,21 @@ type _rand struct {
 }
 
 var (
-	_globalRand *_rand = Seed()
+	_globalRand Rand = Seed()
 	_globalSeed int
 	_globalMut  sync.Mutex
 )
 
 //构造一个随机器
-func Seed() *_rand {
-	_globalMut.Lock()
-	addp := _globalSeed
-	_globalSeed++
-	_globalMut.Unlock()
+func Seed() Rand {
+	return SeedInt(0)
+}
 
-	ms := time.Now().Nanosecond() / 1000000
-	prime1 := ms / 1000000000
-	ms = ms - prime1
-	prime2 := ms/1000 + addp + 1
-	prime3 := (ms-prime2)*1000 + addp + 2
+//构造一个随机器(带个随机值)
+func SeedInt(s int) Rand {
+	prime1 := time.Now().Nanosecond()
+	prime2 := prime1/1000 + s + 1
+	prime3 := (prime1-prime2)*1000 + s + 2
 	return &_rand{prime1: prime1, prime2: prime2, prime3: prime3}
 }
 
@@ -66,14 +75,14 @@ func GlobalSyncUniformFloat() float32 {
 	return _globalRand.SyncUniformFloat()
 }
 
-//全局并发不安全的随机1-max之间的小数(包括1和max)
-func GlobalUniformInt(max int) int {
-	return _globalRand.UniformInt(max)
+//全局并发不安全的随机min-max之间的整数(包括1和max)
+func GlobalUniformInt(min int, max int) int {
+	return _globalRand.UniformInt(min, max)
 }
 
-//全局并发不安全的随机1-max之间的小数(包括1和max)
-func GlobalSyncUniformInt(max int) int {
-	return _globalRand.SyncUniformInt(max)
+//全局并发不安全的随机1-max之间的整数(包括1和max)
+func GlobalSyncUniformInt(min int, max int) int {
+	return _globalRand.SyncUniformInt(min, max)
 }
 
 //并发不安全的随机0-1之间的小数(包括0不包括1)
@@ -91,19 +100,19 @@ func (_r *_rand) SyncUniformFloat() float32 {
 	return r
 }
 
-//并发不安全的随机1-max之间的小数(包括1和max)
-func (_r *_rand) UniformInt(max int) int {
-	if max < 1 {
+//并发不安全的随机min-max之间的小数(包括1和max)
+func (_r *_rand) UniformInt(min int, max int) int {
+	if max < min {
 		panic("random UniformInt param max must >= 1")
 	}
 	f := _r.UniformFloat()
-	return int(f*float32(max)) + 1
+	return int(f*float32(max-min)) + min
 }
 
-//并发不安全的随机1-max之间的小数(包括1和max)
-func (_r *_rand) SyncUniformInt(max int) int {
+//并发不安全的随机max-max之间的小数(包括1和max)
+func (_r *_rand) SyncUniformInt(min int, max int) int {
 	_r._mut.Lock()
-	r := _r.UniformInt(max)
+	r := _r.UniformInt(min, max)
 	_r._mut.Unlock()
 	return r
 }

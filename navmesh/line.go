@@ -1,7 +1,7 @@
 // line.go
 package navmesh
 
-import(
+import (
 	"math"
 )
 
@@ -12,88 +12,190 @@ type line struct {
 
 //检测是否与线相交(交叉点包括线的起点和终点)
 func (l line) isIntersect(ol line) bool {
-	lmaxx, lminx := maxmin(l.sp.x, l.ep.x)
-	olmaxx, olminx := maxmin(ol.sp.x, ol.ep.x)
-	
+	lmaxx, lminx := maxmin(l.sp.X, l.ep.X)
+	olmaxx, olminx := maxmin(ol.sp.X, ol.ep.X)
+
 	if !(lmaxx >= olminx && olmaxx >= lminx) {
 		return false
 	}
-	
-	lmaxy, lminy := maxmin(l.sp.y, l.ep.y)
-	olmaxy, olminy := maxmin(ol.sp.y, ol.ep.y)
-	
-	if !(lmaxy >= olminy && olmaxy >= lminy){
+
+	lmaxy, lminy := maxmin(l.sp.Y, l.ep.Y)
+	olmaxy, olminy := maxmin(ol.sp.Y, ol.ep.Y)
+
+	if !(lmaxy >= olminy && olmaxy >= lminy) {
 		return false
 	}
-	
-	z1 := (ol.sp.x-l.sp.x)*(l.ep.y-l.sp.y) - (ol.sp.y-l.sp.y)*(l.ep.x-l.sp.x)
-	z2 := (ol.ep.x-l.sp.x)*(l.ep.y-l.sp.y) - (ol.ep.y-l.sp.y)*(l.ep.x-l.sp.x)
+
+	z1 := (ol.sp.X-l.sp.X)*(l.ep.Y-l.sp.Y) - (ol.sp.Y-l.sp.Y)*(l.ep.X-l.sp.X)
+	z2 := (ol.ep.X-l.sp.X)*(l.ep.Y-l.sp.Y) - (ol.ep.Y-l.sp.Y)*(l.ep.X-l.sp.X)
 	if z1*z2 > 0 {
 		return false
 	}
-	z3 := (l.sp.x-ol.sp.x)*(ol.ep.y-ol.sp.y) - (l.sp.y-ol.sp.y)*(ol.ep.x-ol.sp.x)
-	z4 := (l.ep.x-ol.sp.x)*(ol.ep.y-ol.sp.y) - (l.ep.y-ol.sp.y)*(ol.ep.x-ol.sp.x)
+	z3 := (l.sp.X-ol.sp.X)*(ol.ep.Y-ol.sp.Y) - (l.sp.Y-ol.sp.Y)*(ol.ep.X-ol.sp.X)
+	z4 := (l.ep.X-ol.sp.X)*(ol.ep.Y-ol.sp.Y) - (l.ep.Y-ol.sp.Y)*(ol.ep.X-ol.sp.X)
 	if z3*z4 > 0 {
 		return false
 	}
 	return true
 }
+
 //检测是否与线互相穿过(只有一个交点且交点不是起点和终点)
 func (l line) isCross(ol line) bool {
-	lmaxx, lminx := maxmin(l.sp.x, l.ep.x)
-	olmaxx, olminx := maxmin(ol.sp.x, ol.ep.x)
-	
+	lmaxx, lminx := maxmin(l.sp.X, l.ep.X)
+	olmaxx, olminx := maxmin(ol.sp.X, ol.ep.X)
+
 	if !(lmaxx >= olminx && olmaxx >= lminx) {
 		return false
 	}
-	
-	lmaxy, lminy := maxmin(l.sp.y, l.ep.y)
-	olmaxy, olminy := maxmin(ol.sp.y, ol.ep.y)
-	
-	if !(lmaxy >= olminy && olmaxy >= lminy){
+
+	lmaxy, lminy := maxmin(l.sp.Y, l.ep.Y)
+	olmaxy, olminy := maxmin(ol.sp.Y, ol.ep.Y)
+
+	if !(lmaxy >= olminy && olmaxy >= lminy) {
 		return false
 	}
-	
-	z1 := (ol.sp.x-l.sp.x)*(l.ep.y-l.sp.y) - (ol.sp.y-l.sp.y)*(l.ep.x-l.sp.x)
-	z2 := (ol.ep.x-l.sp.x)*(l.ep.y-l.sp.y) - (ol.ep.y-l.sp.y)*(l.ep.x-l.sp.x)
+
+	z1 := (ol.sp.X-l.sp.X)*(l.ep.Y-l.sp.Y) - (ol.sp.Y-l.sp.Y)*(l.ep.X-l.sp.X)
+	z2 := (ol.ep.X-l.sp.X)*(l.ep.Y-l.sp.Y) - (ol.ep.Y-l.sp.Y)*(l.ep.X-l.sp.X)
 	if z1*z2 >= 0 {
 		return false
 	}
-	z3 := (l.sp.x-ol.sp.x)*(ol.ep.y-ol.sp.y) - (l.sp.y-ol.sp.y)*(ol.ep.x-ol.sp.x)
-	z4 := (l.ep.x-ol.sp.x)*(ol.ep.y-ol.sp.y) - (l.ep.y-ol.sp.y)*(ol.ep.x-ol.sp.x)
+	z3 := (l.sp.X-ol.sp.X)*(ol.ep.Y-ol.sp.Y) - (l.sp.Y-ol.sp.Y)*(ol.ep.X-ol.sp.X)
+	z4 := (l.ep.X-ol.sp.X)*(ol.ep.Y-ol.sp.Y) - (l.ep.Y-ol.sp.Y)*(ol.ep.X-ol.sp.X)
 	if z3*z4 >= 0 {
 		return false
 	}
 	return true
 }
 
-//线是否穿过多边形区域(各顶点和边不算)
-func (l line)isCrossConvexPolygon(cp *ConvexPolygon)bool{
-	length := len(cp.ps)-1
-	ol := line{sp:cp.ps[length-1],ep:cp.ps[0]}
-	if l.isCross(ol){
+//线是否与多边形的边相交(交叉点包括线的起点和终点)
+func (l line) isIntersectConvexPolygon(cp *convexPolygon) bool {
+	length := len(cp.ps) - 1
+	ol := line{sp: cp.ps[length-1], ep: cp.ps[0]}
+	if l.isIntersect(ol) {
 		return true
 	}
-	for i:=1;i<length;i++{
+	for i := 1; i < length; i++ {
 		ol.sp = ol.ep
 		ol.ep = cp.ps[i]
-		if l.isCross(ol){
+		if l.isIntersect(ol) {
+			return true
+		}
+	}
+
+	return false
+}
+
+//线是否穿过多边形的边(各顶点和边不算)
+func (l line) isCrossConvexPolygon(cp *convexPolygon) bool {
+	length := len(cp.ps) - 1
+	ol := line{sp: cp.ps[length-1], ep: cp.ps[0]}
+	if l.isCross(ol) {
+		return true
+	}
+	for i := 1; i < length; i++ {
+		ol.sp = ol.ep
+		ol.ep = cp.ps[i]
+		if l.isCross(ol) {
 			return true
 		}
 	}
 	return false
 }
 
+//得到线段穿过的格子id列表
+func (l line) getAcossGridNums(gsize int64, maxVNum int64) []int64 {
+	gnum1 := l.sp.getGridNum(gsize, maxVNum)
+	gnum2 := l.ep.getGridNum(gsize, maxVNum)
+	if gnum1 == gnum2 {
+		return []int64{gnum1}
+	}
+	gidList := make([]int64, 0, 20)
+	//在同一行
+	if int64(math.Abs(float64(gnum1-gnum2))) < gsize {
+		if gnum1 > gnum2 {
+			for ; gnum2 <= gnum1; gnum2++ {
+				gidList = append(gidList, gnum2)
+			}
+		} else {
+			for ; gnum1 <= gnum2; gnum1++ {
+				gidList = append(gidList, gnum1)
+			}
+		}
+		return gidList
+	}
+	//在同一列
+	if gnum1%maxVNum == gnum2%maxVNum {
+		if gnum1 > gnum2 {
+			for ; gnum2 <= gnum1; gnum2 += maxVNum {
+				gidList = append(gidList, gnum2)
+			}
+		} else {
+			for ; gnum1 <= gnum2; gnum1 += maxVNum {
+				gidList = append(gidList, gnum1)
+			}
+		}
+		return gidList
+	}
+	x := l.ep.X - l.sp.X
+	y := l.ep.Y - l.sp.Y
+	tan := y / x
+	a := l.ep.Y - tan*l.ep.X
+	gid := l.sp.getGridNum(gsize, maxVNum)
+	gidList = append(gidList, gid)
+	p := point{}
+	if x > 0 {
+		max := l.ep.X / gsize * gsize
+		x = l.sp.X/gsize*gsize + gsize
+		for ; x <= max; x += gsize {
+			y = tan*x + a
+			p.X, p.Y = x, y
+			gid = p.getGridNum(gsize, maxVNum)
+			gidList = append(gidList, gid)
+		}
+	} else {
+		min := l.ep.X / gsize * gsize
+		x = l.sp.X/gsize*gsize - gsize
+		for ; x >= min; x -= gsize {
+			y = tan*x + a
+			p.X, p.Y = x, y
+			gid = p.getGridNum(gsize, maxVNum)
+			gidList = append(gidList, gid)
+		}
+	}
+	if l.ep.Y-l.sp.Y > 0 {
+		max := l.ep.Y / gsize * gsize
+		y = l.sp.Y/gsize*gsize + gsize
+		for ; y <= max; y += gsize {
+			x = (y - a) / tan
+			p.X, p.Y = x, y
+			gid = p.getGridNum(gsize, maxVNum)
+			gidList = append(gidList, gid)
+		}
+	} else {
+		min := l.ep.Y / gsize * gsize
+		y = l.sp.Y/gsize*gsize - gsize
+		for ; y >= min; y -= gsize {
+			x = (y - a) / tan
+			p.X, p.Y = x, y
+			gid = p.getGridNum(gsize, maxVNum)
+			gidList = append(gidList, gid)
+		}
+	}
+	return gidList
+}
+
 //长度没有开方
 func (l line) Distance2() int64 {
-	x := l.ep.x - l.sp.x
-	y := l.ep.y - l.sp.y
+	x := l.ep.X - l.sp.X
+	y := l.ep.Y - l.sp.Y
 	return x*x + y*y
 }
+
 //长度已开方
 func (l line) Distance() float64 {
-	x := l.ep.x - l.sp.x
-	y := l.ep.y - l.sp.y
+	x := l.ep.X - l.sp.X
+	y := l.ep.Y - l.sp.Y
 	return math.Sqrt(float64(x*x + y*y))
 }
 

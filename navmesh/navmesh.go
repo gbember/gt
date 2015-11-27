@@ -1,138 +1,174 @@
 // navmesh.go
 package navmesh
 
-import(
-	"math"
+import (
+	"encoding/json"
+	"errors"
+	"io/ioutil"
 )
 
-type NavMesh struct{
-	//格子大小(用于定位点在某个多边形区域)
-	gsize int64
-	//地图宽度
-	width int64
-	//地图高度
-	heigth int64
-	//格子大小和地图宽度计算出来的横向最多格子数
-	maxVNum int64
+type NavMesh struct {
+	gsize   int64                      //格子大小(用于定位点在某个多边形区域)
+	width   int64                      //地图宽度
+	heigth  int64                      //地图高度
+	maxVNum int64                      //格子大小和地图宽度计算出来的横向最多格子数
+	cps     []*convexPolygon           //所有多边行区域
+	gcp_m   map[int64][]*convexPolygon //格子与区域关系(一个格子可能与多个区域相交) 没有找到区域的表示不能行走
+}
+
+type navMeshJson struct {
+	GSize  int64     `json:"gsize"`
+	Width  int64     `json:"width"`
+	Heigth int64     `json:"heigth"`
+	Points [][]point `json:"points"`
+}
+
+//从json数据文件新建一个*NavMesh
+func NewNavMesh(meshFileName string) (*NavMesh, error) {
+	data, err := ioutil.ReadFile(meshFileName)
+	if err != nil {
+		return nil, err
+	}
+	nmj := new(navMeshJson)
+	err = json.Unmarshal(data, nmj)
+	if err != nil {
+		return nil, err
+	}
+	nm := new(NavMesh)
+	nm.gsize = nmj.GSize
+	nm.width = nmj.Width
+	nm.heigth = nmj.Heigth
+	nm.maxVNum = nm.width / nm.gsize
+	if nm.width%nm.gsize != 0 {
+		nm.maxVNum++
+	}
+	nm.gcp_m = make(map[int64][]*convexPolygon, 500)
+	length := len(nmj.Points)
+	nm.cps = make([]*convexPolygon, length, length)
+	for i := 0; i < length; i++ {
+		if len(nmj.Points[i]) < 3 {
+			return nil, errors.New("convexPolygon point num large 3")
+		}
+		nm.cps[i] = newConvexPolygon(i)
+		nm.cps[i].ps = nmj.Points[i]
+	}
+	err = nm.makeRelas()
+	return nm, err
+}
+
+func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]point, bool) {
+	ep := point{x2, y2}
+	ecp := nm.getPointCP(ep)
+	if ecp == nil {
+		return nil, false
+	}
+	sp := point{x1, y1}
+	scp := nm.getPointCP(sp)
+
+	if ecp.id == scp.id {
+		return []point{sp, ep}, true
+	}
+
+	nmastar := &navmesh_astar{
+		ol:     &openList{},
+		cl:     make(map[point]bool, 1000),
+		srcP:   sp,
+		srcCP:  scp,
+		destP:  ep,
+		destCP: ecp,
+	}
+	return nmastar.findPath()
+}
+
+//是否是可走点
+func (nm *NavMesh) IsWalkOfPoint(p point) bool {
+	return nm.getPointCP(p) != nil
+}
+
+//得到点所在的某个区域(可能有多个  但只返回一个 返回nil表示点不在区域中)
+func (nm *NavMesh) getPointCP(p point) *convexPolygon {
+	gid := p.getGridNum(nm.gsize, nm.maxVNum)
+	if cps, ok := nm.gcp_m[gid]; ok {
+		length := len(cps)
+		for i := 0; i < length; i++ {
+			if cps[i].isContainPoint(p) {
+				return cps[i]
+			}
+		}
+	}
+	return nil
 }
 
 //得到点所在的格子编号
-func (nm *NavMesh)getGridNum(p point)int64{
-	return p.x/nm.gsize + 1 + p.y/nm.gsize*nm.maxVNum
+func (nm *NavMesh) getGridNum(p point) int64 {
+	return p.getGridNum(nm.gsize, nm.maxVNum)
 }
 
 //得到线段穿过的格子id列表
 func (nm *NavMesh) getAcossGridNums(l line) []int64 {
-	gnum1 := nm.getGridNum(l.sp)
-	gnum2 := nm.getGridNum(l.ep)
-	if gnum1 == gnum2 {
-		return []int64{gnum1}
-	}
-	gidList := make([]int64, 0, 20)
-	gsize := nm.gsize
-	maxVNum := nm.maxVNum
-	//在同一行
-	if int64(math.Abs(float64(gnum1-gnum2))) < gsize {
-		if gnum1 > gnum2 {
-			for ; gnum2 <= gnum1; gnum2++ {
-				gidList = append(gidList, gnum2)
-			}
-		} else {
-			for ; gnum1 <= gnum2; gnum1++ {
-				gidList = append(gidList, gnum1)
-			}
-		}
-		return gidList
-	}
-	//在同一列
-	if gnum1%maxVNum == gnum2%maxVNum {
-		if gnum1 > gnum2 {
-			for ; gnum2 <= gnum1; gnum2 += maxVNum {
-				gidList = append(gidList, gnum2)
-			}
-		} else {
-			for ; gnum1 <= gnum2; gnum1 += maxVNum {
-				gidList = append(gidList, gnum1)
-			}
-		}
-		return gidList
-	}
-	x := l.ep.x - l.sp.x
-	y := l.ep.y - l.sp.y
-	tan := y / x
-	a := l.ep.y - tan*l.ep.x
-	gid := nm.getGridNum(l.sp)
-	gidList = append(gidList, gid)
-	if x > 0 {
-		max := l.ep.x / gsize * gsize
-		x = l.sp.x/gsize*gsize + gsize
-		for ; x <= max; x += gsize {
-			y = tan*x + a
-			gid = nm.getGridNum(point{x: x, y: y})
-			gidList = append(gidList, gid)
-		}
-	} else {
-		min := l.ep.x / gsize * gsize
-		x = l.sp.x/gsize*gsize - gsize
-		for ; x >= min; x -= gsize {
-			y = tan*x + a
-			gid = nm.getGridNum(point{x: x, y: y})
-			gidList = append(gidList, gid)
-		}
-	}
-	if l.ep.y-l.sp.y > 0 {
-		max := l.ep.y / gsize * gsize
-		y = l.sp.y/gsize*gsize + gsize
-		for ; y <= max; y += gsize {
-			x = (y - a) / tan
-			gid = nm.getGridNum(point{x: x, y: y})
-			gidList = append(gidList, gid)
-		}
-	} else {
-		min := l.ep.y / gsize * gsize
-		y = l.sp.y/gsize*gsize - gsize
-		for ; y >= min; y -= gsize {
-			x = (y - a) / tan
-			gid = nm.getGridNum(point{x: x, y: y})
-			gidList = append(gidList, gid)
-		}
-	}
-	return gidList
+	return l.getAcossGridNums(nm.gsize, nm.maxVNum)
 }
 
 //得到区域包含的格子id列表
-func (nm *NavMesh) getGrids(cp *ConvexPolygon) []int64 {
-	maxX := cp.ps[0].x
-	maxY := cp.ps[0].y
-	minX := cp.ps[0].x
-	minY := cp.ps[0].y
-	gsize:=nm.gsize
-	t := int64(0)
-	for i := 1; i < len(cp.ps); i++ {
-		t = cp.ps[i].x
-		if t > maxX {
-			maxX = t
-		}
-		if t < minX {
-			minX = t
-		}
-		t = cp.ps[i].y
-		if t > maxY {
-			maxY = t
-		}
-		if t < minY {
-			minY = t
+func (nm *NavMesh) getGrids(cp *convexPolygon) []int64 {
+	return cp.getGrids(nm.gsize, nm.maxVNum)
+}
+
+//构建关系(格子所在的区域、区域与区域相邻关系、区域不可穿过线)
+func (nm *NavMesh) makeRelas() (err error) {
+	cps := nm.cps
+	length := len(cps)
+	for i := 0; i < length; i++ {
+		for j := i + 1; j < length; j++ {
+			make_l2cp(cps[i], cps[j])
 		}
 	}
-	ret := make([]int64, 0, 20)
-	gid := int64(0)
-	for x := minX / gsize * gsize; x <= maxX; x += gsize {
-		for y := minY / gsize * gsize; y <= maxY; y += gsize {
-			gid = nm.getGridNum(point{x: x, y: y})
-			if cp.isContainGrid(gid) {
-				ret = append(ret, gid)
+
+	var cp *convexPolygon
+	gsize := nm.gsize
+	maxVNum := nm.maxVNum
+	for i := 0; i < length; i++ {
+		cp = cps[i]
+		gidList := cp.getGrids(gsize, maxVNum)
+
+		for j := 0; j < len(gidList); j++ {
+			if cps, ok := nm.gcp_m[gidList[j]]; ok {
+				cps = append(cps, cp)
+				nm.gcp_m[gidList[j]] = cps
+			} else {
+				nm.gcp_m[gidList[j]] = []*convexPolygon{cp}
 			}
 		}
+
+		err = cp.makeLines()
+		if err != nil {
+			return
+		}
 	}
-	return ret
+	return
 }
+
+//func Test() {
+//	nm, _ := NewNavMesh("../mesh.json")
+//	p := point{102, 90}
+//	gid := p.getGridNum(nm.gsize, nm.maxVNum)
+//	log.Println(gid)
+//	log.Println(nm.cps[0].isContainPoint(p))
+
+//	minY := gid / nm.maxVNum * nm.gsize
+//	maxY := minY + nm.gsize
+//	minX := ((gid - 1) % nm.maxVNum) * nm.gsize
+//	maxX := minX + nm.gsize
+
+//	log.Println(minX, minY, maxX, maxY)
+
+//	log.Println(nm.cps[0].isIntersectGrid(gid, nm.gsize, nm.maxVNum))
+
+//	//	cp := new(convexPolygon)
+//	//	cp.ps = []point{point{1, 1}, point{1, 12}, point{12, 12}, point{12, 1}}
+//	//	p := point{1, 0}
+//	//	gid := p.getGridNum(5, 2000)
+//	//	log.Println(gid)
+//	//	log.Println(cp.isContainPoint(p))
+//	//	log.Println(cp.isIntersectGrid(gid, 5, 2000))
+//}

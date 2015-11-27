@@ -57,6 +57,7 @@ func NewNavMesh(meshFileName string) (*NavMesh, error) {
 }
 
 func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]point, bool) {
+
 	ep := point{x2, y2}
 	ecp := nm.getPointCP(ep)
 	if ecp == nil {
@@ -147,28 +148,3 @@ func (nm *NavMesh) makeRelas() (err error) {
 	}
 	return
 }
-
-//func Test() {
-//	nm, _ := NewNavMesh("../mesh.json")
-//	p := point{102, 90}
-//	gid := p.getGridNum(nm.gsize, nm.maxVNum)
-//	log.Println(gid)
-//	log.Println(nm.cps[0].isContainPoint(p))
-
-//	minY := gid / nm.maxVNum * nm.gsize
-//	maxY := minY + nm.gsize
-//	minX := ((gid - 1) % nm.maxVNum) * nm.gsize
-//	maxX := minX + nm.gsize
-
-//	log.Println(minX, minY, maxX, maxY)
-
-//	log.Println(nm.cps[0].isIntersectGrid(gid, nm.gsize, nm.maxVNum))
-
-//	//	cp := new(convexPolygon)
-//	//	cp.ps = []point{point{1, 1}, point{1, 12}, point{12, 12}, point{12, 1}}
-//	//	p := point{1, 0}
-//	//	gid := p.getGridNum(5, 2000)
-//	//	log.Println(gid)
-//	//	log.Println(cp.isContainPoint(p))
-//	//	log.Println(cp.isIntersectGrid(gid, 5, 2000))
-//}

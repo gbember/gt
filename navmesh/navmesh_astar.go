@@ -1,7 +1,9 @@
 // navmesh_astar.go
 package navmesh
 
-import "container/heap"
+import (
+	"container/heap"
+)
 
 type navmesh_astar struct {
 	ol     *openList      //开放列表
@@ -46,7 +48,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		ap1 = &astar_point{
 			cp:       ap.cp,
 			p:        nmastar.destP,
-			size:     ap.size + li.Distance2(),
+			size:     ap.size + int64(li.Distance()),
 			parentAP: ap,
 			length:   ap.length + 1,
 		}
@@ -66,7 +68,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 				ap1 = &astar_point{
 					cp:       l2cp.cp,
 					p:        l2cp.l.sp,
-					size:     ap.size + li.Distance2(),
+					size:     ap.size + int64(li.Distance()),
 					parentAP: ap,
 					length:   ap.length + 1,
 				}
@@ -82,7 +84,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 				ap1 = &astar_point{
 					cp:       l2cp.cp,
 					p:        l2cp.l.ep,
-					size:     ap.size + li.Distance2(),
+					size:     ap.size + int64(li.Distance()),
 					parentAP: ap,
 					length:   ap.length + 1,
 				}
@@ -105,10 +107,15 @@ func (nmastar *navmesh_astar) findPath() ([]point, bool) {
 		length: 1,
 	}
 	heap.Push(nmastar.ol, ap)
+
 	var apx interface{}
 	for nmastar.ol.Len() > 0 {
 		apx = heap.Pop(nmastar.ol)
 		ap = apx.(*astar_point)
+		if nmastar.cl[ap.p]{
+			continue
+		}
+		
 		if ap.p == nmastar.destP {
 			//找到路径
 			ps := make([]point, ap.length, ap.length)
@@ -119,8 +126,9 @@ func (nmastar *navmesh_astar) findPath() ([]point, bool) {
 			}
 			return ps, true
 		}
-		nmastar.addNextAPOpenList(ap)
 		nmastar.addCloseList(ap.p)
+		nmastar.addNextAPOpenList(ap)
+		
 	}
 	return nil, false
 }

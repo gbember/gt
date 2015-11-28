@@ -6,7 +6,7 @@ import "errors"
 //凸多边形
 type convexPolygon struct {
 	id    int        //区域编号
-	ps    []point    //多边形的所有顶点(逆时针排序)
+	ps    []Point    //多边形的所有顶点(逆时针排序)
 	lines []line     //该多边形不能穿过的线
 	lcs   []*line2CP //相邻区域
 }
@@ -26,7 +26,7 @@ func newConvexPolygon(id int) *convexPolygon {
 }
 
 //是否包含点
-func (cp *convexPolygon) isContainPoint(p point) bool {
+func (cp *convexPolygon) isContainPoint(p Point) bool {
 	maxIndex := len(cp.ps) - 1
 	p1 := cp.ps[maxIndex]
 	p2 := cp.ps[0]
@@ -53,10 +53,10 @@ func (cp *convexPolygon) isIntersectGrid(gridNum int64, gsize int64, maxVNum int
 	maxY := minY + gsize
 	minX := ((gridNum - 1) % maxVNum) * gsize
 	maxX := minX + gsize
-	if cp.isContainPoint(point{X: minX, Y: minY}) ||
-		cp.isContainPoint(point{X: maxX, Y: minY}) ||
-		cp.isContainPoint(point{X: maxX, Y: maxY}) ||
-		cp.isContainPoint(point{X: minX, Y: minY}) {
+	if cp.isContainPoint(Point{X: minX, Y: minY}) ||
+		cp.isContainPoint(Point{X: maxX, Y: minY}) ||
+		cp.isContainPoint(Point{X: maxX, Y: maxY}) ||
+		cp.isContainPoint(Point{X: minX, Y: minY}) {
 		return true
 	}
 
@@ -88,7 +88,7 @@ func (cp *convexPolygon) getGrids(gsize int64, maxVNum int64) []int64 {
 	}
 	ret := make([]int64, 0, 20)
 	gid := int64(0)
-	p := point{}
+	p := Point{}
 	for x := minX / gsize * gsize; x <= maxX; x += gsize {
 		for y := minY / gsize * gsize; y <= maxY; y += gsize {
 			p.X, p.Y = x, y

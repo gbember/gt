@@ -7,10 +7,10 @@ import (
 
 type navmesh_astar struct {
 	ol     *openList      //开放列表
-	cl     map[point]bool //关闭列表
-	srcP   point          //起点
+	cl     map[Point]bool //关闭列表
+	srcP   Point          //起点
 	srcCP  *convexPolygon //起点所在的区域
-	destP  point          //终点
+	destP  Point          //终点
 	destCP *convexPolygon //终点所在的区域
 }
 
@@ -19,7 +19,7 @@ type openList []*astar_point
 
 //A星节点结构
 type astar_point struct {
-	p        point
+	p        Point
 	cp       *convexPolygon
 	size     int64
 	length   int
@@ -48,7 +48,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		ap1 = &astar_point{
 			cp:       ap.cp,
 			p:        nmastar.destP,
-			size:     ap.size + int64(li.Distance()),
+			size:     li.Distance2(),
 			parentAP: ap,
 			length:   ap.length + 1,
 		}
@@ -61,15 +61,15 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		l2cp = cp.lcs[i]
 		if !nmastar.cl[l2cp.l.sp] {
 			if l2cp.l.sp == ap.p {
-				delete(nmastar.cl,ap.p)
+				delete(nmastar.cl, ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
-				li.sp, li.ep = l2cp.l.sp, ap.p
+				li.sp, li.ep = l2cp.l.sp, nmastar.destP
 				ap1 = &astar_point{
 					cp:       l2cp.cp,
 					p:        l2cp.l.sp,
-					size:     ap.size + int64(li.Distance()),
+					size:     li.Distance2(),
 					parentAP: ap,
 					length:   ap.length + 1,
 				}
@@ -78,15 +78,15 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		}
 		if !nmastar.cl[l2cp.l.ep] {
 			if l2cp.l.ep == ap.p {
-				delete(nmastar.cl,ap.p)
+				delete(nmastar.cl, ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
-				li.sp, li.ep = l2cp.l.ep, ap.p
+				li.sp, li.ep = l2cp.l.ep, nmastar.destP
 				ap1 = &astar_point{
 					cp:       l2cp.cp,
 					p:        l2cp.l.ep,
-					size:     ap.size + int64(li.Distance()),
+					size:     li.Distance2(),
 					parentAP: ap,
 					length:   ap.length + 1,
 				}
@@ -97,11 +97,11 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 
 }
 
-func (nmastar *navmesh_astar) addCloseList(p point) {
+func (nmastar *navmesh_astar) addCloseList(p Point) {
 	nmastar.cl[p] = true
 }
 
-func (nmastar *navmesh_astar) findPath() ([]point, bool) {
+func (nmastar *navmesh_astar) findPath() ([]Point, bool) {
 	heap.Init(nmastar.ol)
 	ap := &astar_point{
 		cp:     nmastar.srcCP,
@@ -114,13 +114,13 @@ func (nmastar *navmesh_astar) findPath() ([]point, bool) {
 	for nmastar.ol.Len() > 0 {
 		apx = heap.Pop(nmastar.ol)
 		ap = apx.(*astar_point)
-		if nmastar.cl[ap.p]{
+		if nmastar.cl[ap.p] {
 			continue
 		}
-		
+
 		if ap.p == nmastar.destP {
 			//找到路径
-			ps := make([]point, ap.length, ap.length)
+			ps := make([]Point, ap.length, ap.length)
 			i := ap.length - 1
 			for ; ap != nil; i-- {
 				ps[i] = ap.p
@@ -130,7 +130,7 @@ func (nmastar *navmesh_astar) findPath() ([]point, bool) {
 		}
 		nmastar.addCloseList(ap.p)
 		nmastar.addNextAPOpenList(ap)
-		
+
 	}
 	return nil, false
 }

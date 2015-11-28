@@ -6,8 +6,8 @@ import (
 )
 
 type line struct {
-	sp point
-	ep point
+	sp Point
+	ep Point
 }
 
 //检测是否与线相交(交叉点包括线的起点和终点)
@@ -143,7 +143,7 @@ func (l line) getAcossGridNums(gsize int64, maxVNum int64) []int64 {
 	a := l.ep.Y - tan*l.ep.X
 	gid := l.sp.getGridNum(gsize, maxVNum)
 	gidList = append(gidList, gid)
-	p := point{}
+	p := Point{}
 	if x > 0 {
 		max := l.ep.X / gsize * gsize
 		x = l.sp.X/gsize*gsize + gsize

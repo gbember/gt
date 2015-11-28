@@ -16,11 +16,11 @@ type NavMesh struct {
 	gcp_m   map[int64][]*convexPolygon //格子与区域关系(一个格子可能与多个区域相交) 没有找到区域的表示不能行走
 }
 
-type navMeshJson struct {
+type NavMeshJson struct {
 	GSize  int64     `json:"gsize"`
 	Width  int64     `json:"width"`
 	Heigth int64     `json:"heigth"`
-	Points [][]point `json:"points"`
+	Points [][]Point `json:"points"`
 }
 
 //从json数据文件新建一个*NavMesh
@@ -29,7 +29,7 @@ func NewNavMesh(meshFileName string) (*NavMesh, error) {
 	if err != nil {
 		return nil, err
 	}
-	nmj := new(navMeshJson)
+	nmj := new(NavMeshJson)
 	err = json.Unmarshal(data, nmj)
 	if err != nil {
 		return nil, err
@@ -56,22 +56,22 @@ func NewNavMesh(meshFileName string) (*NavMesh, error) {
 	return nm, err
 }
 
-func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]point, bool) {
-	ep := point{x2, y2}
+func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]Point, bool) {
+	ep := Point{x2, y2}
 	ecp := nm.getPointCP(ep)
 	if ecp == nil {
 		return nil, false
 	}
-	sp := point{x1, y1}
+	sp := Point{x1, y1}
 	scp := nm.getPointCP(sp)
 
 	if ecp.id == scp.id {
-		return []point{sp, ep}, true
+		return []Point{sp, ep}, true
 	}
 
 	nmastar := &navmesh_astar{
 		ol:     &openList{},
-		cl:     make(map[point]bool, 100),
+		cl:     make(map[Point]bool, 100),
 		srcP:   sp,
 		srcCP:  scp,
 		destP:  ep,
@@ -81,12 +81,12 @@ func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]point, bool) {
 }
 
 //是否是可走点
-func (nm *NavMesh) IsWalkOfPoint(p point) bool {
+func (nm *NavMesh) IsWalkOfPoint(p Point) bool {
 	return nm.getPointCP(p) != nil
 }
 
 //得到点所在的某个区域(可能有多个  但只返回一个 返回nil表示点不在区域中)
-func (nm *NavMesh) getPointCP(p point) *convexPolygon {
+func (nm *NavMesh) getPointCP(p Point) *convexPolygon {
 	gid := p.getGridNum(nm.gsize, nm.maxVNum)
 	if cps, ok := nm.gcp_m[gid]; ok {
 		length := len(cps)
@@ -100,7 +100,7 @@ func (nm *NavMesh) getPointCP(p point) *convexPolygon {
 }
 
 //得到点所在的格子编号
-func (nm *NavMesh) getGridNum(p point) int64 {
+func (nm *NavMesh) getGridNum(p Point) int64 {
 	return p.getGridNum(nm.gsize, nm.maxVNum)
 }
 

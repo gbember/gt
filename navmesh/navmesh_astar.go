@@ -43,7 +43,7 @@ func (ol *openList) Pop() interface{} {
 func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 	var ap1 *astar_point
 	var li line
-	if ap.cp.id == nmastar.destCP.id {
+	if ap.cp == nmastar.destCP {
 		li.sp, li.ep = ap.p, nmastar.destP
 		ap1 = &astar_point{
 			cp:       ap.cp,
@@ -61,6 +61,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		l2cp = cp.lcs[i]
 		if !nmastar.cl[l2cp.l.sp] {
 			if l2cp.l.sp == ap.p {
+				delete(nmastar.cl,ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
@@ -77,6 +78,7 @@ func (nmastar *navmesh_astar) addNextAPOpenList(ap *astar_point) {
 		}
 		if !nmastar.cl[l2cp.l.ep] {
 			if l2cp.l.ep == ap.p {
+				delete(nmastar.cl,ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {

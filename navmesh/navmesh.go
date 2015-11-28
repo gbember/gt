@@ -56,7 +56,7 @@ func NewNavMesh(meshFileName string) (*NavMesh, error) {
 	return nm, err
 }
 
-func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]Point, bool) {
+func (nm *NavMesh) FindPath(nmastar *NavmeshAstar,x1, y1, x2, y2 int64) ([]Point, bool) {
 	ep := Point{x2, y2}
 	ecp := nm.getPointCP(ep)
 	if ecp == nil {
@@ -68,15 +68,14 @@ func (nm *NavMesh) FindPath(x1, y1, x2, y2 int64) ([]Point, bool) {
 	if ecp.id == scp.id {
 		return []Point{sp, ep}, true
 	}
+	
+	nmastar.srcP = sp
+	nmastar.srcCP = scp
+	nmastar.destP = ep
+	nmastar.destCP = ecp
+	
 
-	nmastar := &navmesh_astar{
-		ol:     &openList{},
-		cl:     make(map[Point]bool, 100),
-		srcP:   sp,
-		srcCP:  scp,
-		destP:  ep,
-		destCP: ecp,
-	}
+
 	return nmastar.findPath()
 }
 

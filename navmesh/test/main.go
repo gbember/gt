@@ -19,8 +19,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	ps, isWalk := nm.FindPath(179, 41, 178, 886)
+	nmastar := navmesh.NewNavMeshAStar()
+	ps, isWalk := nm.FindPath(nmastar,179, 41, 178, 886)
 	log.Println(isWalk, ps)
 	if isWalk {
 		fn := "tt.cpuprof"
@@ -35,7 +35,7 @@ func main() {
 		max := int64(100000)
 		st := time.Now()
 		for i := int64(0); i < max; i++ {
-			nm.FindPath(179, 41, 178, 886)
+			nm.FindPath(nmastar,179, 41, 178, 886)
 		}
 		nt := time.Since(st)
 		log.Println(nt, nt.Nanoseconds()/max)

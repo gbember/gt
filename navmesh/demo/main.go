@@ -16,6 +16,7 @@ import (
 var (
 	nmj *navmesh.NavMeshJson
 	nm  *navmesh.NavMesh
+	nmastar = navmesh.NavmeshAstar()
 )
 
 func main() {
@@ -119,7 +120,7 @@ func appMain(driver gxui.Driver) {
 
 //画行走路线
 func drawWalkPath(window gxui.Window, theme gxui.Theme, driver gxui.Driver, x1, y1, x2, y2 int64) {
-	ps, isWalk := nm.FindPath(x1, y1, x2, y2)
+	ps, isWalk := nm.FindPath(nmastar,x1, y1, x2, y2)
 	if !isWalk {
 		return
 	}

@@ -1,30 +1,26 @@
 // navmesh_astar.go
 package navmesh
 
-import (
-//	"log"
-	"container/heap"
-)
+import "container/heap"
 
 type NavmeshAstar struct {
 	ol     *openList      //开放列表
-	cl []Point
-//	cl     map[Point]bool //关闭列表
+	cl     []bool         //关闭列表  cl     map[Point]bool //关闭列表
 	srcP   Point          //起点
 	srcCP  *convexPolygon //起点所在的区域
 	destP  Point          //终点
 	destCP *convexPolygon //终点所在的区域
 	apList []astar_point
 	aindex int
-//	num1 int
-//	num2 int
+	*NavMesh
 }
 
-func NewNavMeshAStar()*NavmeshAstar{
+func NewNavMeshAStar(nm *NavMesh) *NavmeshAstar {
 	nmastar := &NavmeshAstar{
-		ol:     &openList{},
-		cl:     make([]Point, 0,100),
+		ol: &openList{},
+		cl: make([]bool, len(nm.cache_cl), len(nm.cache_cl)),
 	}
+	nmastar.NavMesh = nm
 	return nmastar
 }
 
@@ -34,6 +30,7 @@ type openList []*astar_point
 //A星节点结构
 type astar_point struct {
 	p        Point
+	pindex   uint16
 	cp       *convexPolygon
 	size     int64
 	length   int
@@ -54,16 +51,21 @@ func (ol *openList) Pop() interface{} {
 	return x
 }
 
-func (nmastar *NavmeshAstar)reset(){
+func (nmastar *NavmeshAstar) reset() {
 	*nmastar.ol = (*nmastar.ol)[0:0]
-	nmastar.cl = nmastar.cl[0:0]
+	//	for i := 0; i < len(nmastar.cl); i++ {
+	//		nmastar.cl[i] = false
+	//	}
+	copy(nmastar.cl, nmastar.cache_cl)
+	//	length := len(nmastar.points) + 1
+	//	nmastar.cl = make([]bool, length, length)
 	nmastar.aindex = 0
 }
 
-func (nmastar *NavmeshAstar)mallocAP()*astar_point{
-	if nmastar.aindex==len(nmastar.apList){
-		for i:=0;i<50;i++{
-			nmastar.apList = append(nmastar.apList,astar_point{})
+func (nmastar *NavmeshAstar) mallocAP() *astar_point {
+	if nmastar.aindex == len(nmastar.apList) {
+		for i := 0; i < 50; i++ {
+			nmastar.apList = append(nmastar.apList, astar_point{})
 		}
 	}
 	ap := &nmastar.apList[nmastar.aindex]
@@ -81,14 +83,8 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		ap1.p = nmastar.destP
 		ap1.size = li.Distance2()
 		ap1.parentAP = ap
-		ap1.length=ap.length + 1
-//		ap1 = &astar_point{
-//			cp:       ap.cp,
-//			p:        nmastar.destP,
-//			size:     li.Distance2(),
-//			parentAP: ap,
-//			length:   ap.length + 1,
-//		}
+		ap1.length = ap.length + 1
+
 		heap.Push(nmastar.ol, ap1)
 	}
 	cp := ap.cp
@@ -96,52 +92,38 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	var l2cp *line2CP
 	for i := 0; i < length; i++ {
 		l2cp = cp.lcs[i]
-//		nmastar.num2++
-		if !nmastar.isClosed(l2cp.l.sp){
-//		if !nmastar.cl[l2cp.l.sp] {
-			if l2cp.l.sp == ap.p {
-//				delete(nmastar.cl, ap.p)
+		if !nmastar.isClosed(l2cp.spindex) {
+			if l2cp.spindex == ap.pindex {
+				//				delete(nmastar.cl, ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
-				li.sp, li.ep = l2cp.l.sp, nmastar.destP
+				li.sp, li.ep = nmastar.points[l2cp.spindex], nmastar.destP
 				ap1 = nmastar.mallocAP()
-		ap1.cp = l2cp.cp
-		ap1.p = l2cp.l.sp
-		ap1.size = li.Distance2()
-		ap1.parentAP = ap
-		ap1.length=ap.length + 1
-//				ap1 = &astar_point{
-//					cp:       l2cp.cp,
-//					p:        l2cp.l.sp,
-//					size:     li.Distance2(),
-//					parentAP: ap,
-//					length:   ap.length + 1,
-//				}
+				ap1.cp = l2cp.cp
+				ap1.p = li.sp
+				ap1.pindex = l2cp.spindex
+				ap1.size = li.Distance2()
+				ap1.parentAP = ap
+				ap1.length = ap.length + 1
+
 				heap.Push(nmastar.ol, ap1)
 			}
 		}
-//		nmastar.num2++
-if !nmastar.isClosed(l2cp.l.ep){
-//		if !nmastar.cl[l2cp.l.ep] {
-			if l2cp.l.ep == ap.p {
-//				delete(nmastar.cl, ap.p)
+		if !nmastar.isClosed(l2cp.epindex) {
+			if l2cp.epindex == ap.pindex {
+				//				delete(nmastar.cl, ap.p)
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
-				li.sp, li.ep = l2cp.l.ep, nmastar.destP
+				li.sp, li.ep = nmastar.points[l2cp.epindex], nmastar.destP
 				ap1.cp = l2cp.cp
-		ap1.p = l2cp.l.ep
-		ap1.size = li.Distance2()
-		ap1.parentAP = ap
-		ap1.length=ap.length + 1
-//				ap1 = &astar_point{
-//					cp:       l2cp.cp,
-//					p:        l2cp.l.ep,
-//					size:     li.Distance2(),
-//					parentAP: ap,
-//					length:   ap.length + 1,
-//				}
+				ap1.p = li.sp
+				ap1.pindex = l2cp.epindex
+				ap1.size = li.Distance2()
+				ap1.parentAP = ap
+				ap1.length = ap.length + 1
+
 				heap.Push(nmastar.ol, ap1)
 			}
 		}
@@ -149,19 +131,12 @@ if !nmastar.isClosed(l2cp.l.ep){
 
 }
 
-func (nmastar *NavmeshAstar) addCloseList(p Point) {
-//	nmastar.num1++
-//	nmastar.cl[p] = true
-	nmastar.cl = append(nmastar.cl,p)
-	
+func (nmastar *NavmeshAstar) addCloseList(pindex uint16) {
+	nmastar.cl[pindex] = true
+
 }
-func (nmastar *NavmeshAstar)isClosed(p Point)bool{
-	for i:=0;i<len(nmastar.cl);i++{
-		if p == nmastar.cl[i]{
-			return true
-		}
-	}
-	return false
+func (nmastar *NavmeshAstar) isClosed(pindex uint16) bool {
+	return nmastar.cl[pindex]
 }
 
 func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
@@ -170,22 +145,16 @@ func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
 	ap := nmastar.mallocAP()
 	ap.cp = nmastar.srcCP
 	ap.p = nmastar.srcP
+	ap.pindex = uint16(len(nmastar.cl) - 1)
 	ap.length = 1
-//	ap := &astar_point{
-//		cp:     nmastar.srcCP,
-//		p:      nmastar.srcP,
-//		length: 1,
-//	}
+
 	heap.Push(nmastar.ol, ap)
 
 	var apx interface{}
 	for nmastar.ol.Len() > 0 {
 		apx = heap.Pop(nmastar.ol)
 		ap = apx.(*astar_point)
-		
-//		nmastar.num2++
-		if nmastar.isClosed(ap.p){
-//		if nmastar.cl[ap.p] {
+		if nmastar.isClosed(ap.pindex) {
 			continue
 		}
 
@@ -197,10 +166,10 @@ func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
 				ps[i] = ap.p
 				ap = ap.parentAP
 			}
-//			log.Println(nmastar.num1,nmastar.num2)
+			//			log.Println(nmastar.num1,nmastar.num2)
 			return ps, true
 		}
-		nmastar.addCloseList(ap.p)
+		nmastar.addCloseList(ap.pindex)
 		nmastar.addNextAPOpenList(ap)
 
 	}

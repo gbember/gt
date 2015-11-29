@@ -5,16 +5,17 @@ import "errors"
 
 //凸多边形
 type convexPolygon struct {
-	id    int        //区域编号
-	ps    []Point    //多边形的所有顶点(逆时针排序)
-	lines []line     //该多边形不能穿过的线
-	lcs   []*line2CP //相邻区域
+	id     int        //区域编号
+	pindex []uint16   //多边形的所有顶点(逆时针排序)
+	lines  []line     //该多边形不能穿过的线
+	lcs    []*line2CP //相邻区域
 }
 
 //多边形相邻关系
 type line2CP struct {
-	l  line           //线
-	cp *convexPolygon //区域
+	spindex uint16
+	epindex uint16
+	cp      *convexPolygon //区域
 }
 
 func newConvexPolygon(id int) *convexPolygon {
@@ -26,37 +27,31 @@ func newConvexPolygon(id int) *convexPolygon {
 }
 
 //是否包含点
-func (cp *convexPolygon) isContainPoint(p Point) bool {
-	maxIndex := len(cp.ps) - 1
-	p1 := cp.ps[maxIndex]
-	p2 := cp.ps[0]
-	f := (p2.X-p1.X)*(p.Y-p1.Y) - (p.X-p1.X)*(p2.Y-p1.Y)
-	if f > 0 {
-		return false
-	}
-	p1 = p2
-	for i := 1; i <= maxIndex; i++ {
-		p2 = cp.ps[i]
-		f = (p2.X-p1.X)*(p.Y-p1.Y) - (p.X-p1.X)*(p2.Y-p1.Y)
-		if f > 0 {
+func (cp *convexPolygon) isContainPoint(nm *NavMesh, p Point) bool {
+	length := len(cp.pindex)
+
+	p1 := Point{}
+	p2 := Point{}
+	for i := 0; i < length; i++ {
+		p1 = nm.points[cp.pindex[i]]
+		p2 = nm.points[cp.pindex[(i+1)%length]]
+		if (p2.X-p1.X)*(p.Y-p1.Y)-(p.X-p1.X)*(p2.Y-p1.Y) > 0 {
 			return false
 		}
-		p1 = p2
 	}
-
 	return true
 }
 
 //是否与格子有交点
-func (cp *convexPolygon) isIntersectGrid(gridNum int64, gsize int64, maxVNum int64) bool {
-	minY := gridNum / maxVNum * gsize
-	maxY := minY + gsize
-	minX := ((gridNum - 1) % maxVNum) * gsize
-	maxX := minX + gsize
-	if cp.isContainPoint(Point{X: minX, Y: minY}) ||
-		cp.isContainPoint(Point{X: maxX, Y: minY}) ||
-		cp.isContainPoint(Point{X: maxX, Y: maxY}) ||
-		cp.isContainPoint(Point{X: minX, Y: minY}) {
+func (cp *convexPolygon) isIntersectGrid(nm *NavMesh, gridNum int64) bool {
+	minY := gridNum / nm.maxVNum * nm.gsize
+	maxY := minY + nm.gsize
+	minX := ((gridNum - 1) % nm.maxVNum) * nm.gsize
+	maxX := minX + nm.gsize
+	if cp.isContainPoint(nm, Point{X: minX, Y: minY}) ||
+		cp.isContainPoint(nm, Point{X: maxX, Y: minY}) ||
+		cp.isContainPoint(nm, Point{X: maxX, Y: maxY}) ||
+		cp.isContainPoint(nm, Point{X: minX, Y: minY}) {
 		return true
 	}
 
@@ -64,21 +59,23 @@ func (cp *convexPolygon) isIntersectGrid(gridNum int64, gsize int64, maxVNum int
 }
 
 //得到区域包含的格子id列表
-func (cp *convexPolygon) getGrids(gsize int64, maxVNum int64) []int64 {
-	maxX := cp.ps[0].X
-	maxY := cp.ps[0].Y
-	minX := cp.ps[0].X
-	minY := cp.ps[0].Y
+func (cp *convexPolygon) getGrids(nm *NavMesh) []int64 {
+	index := cp.pindex[0]
+	maxX := nm.points[index].X
+	maxY := nm.points[index].Y
+	minX := nm.points[index].X
+	minY := nm.points[index].Y
 	t := int64(0)
-	for i := 1; i < len(cp.ps); i++ {
-		t = cp.ps[i].X
+	for i := 1; i < len(cp.pindex); i++ {
+		index = cp.pindex[i]
+		t = nm.points[index].X
 		if t > maxX {
 			maxX = t
 		}
 		if t < minX {
 			minX = t
 		}
-		t = cp.ps[i].Y
+		t = nm.points[index].Y
 		if t > maxY {
 			maxY = t
 		}
@@ -89,11 +86,13 @@ func (cp *convexPolygon) getGrids(gsize int64, maxVNum int64) []int64 {
 	ret := make([]int64, 0, 20)
 	gid := int64(0)
 	p := Point{}
+	gsize := nm.gsize
+	maxVNum := nm.maxVNum
 	for x := minX / gsize * gsize; x <= maxX; x += gsize {
 		for y := minY / gsize * gsize; y <= maxY; y += gsize {
 			p.X, p.Y = x, y
 			gid = p.getGridNum(gsize, maxVNum)
-			if cp.isIntersectGrid(gid, gsize, maxVNum) {
+			if cp.isIntersectGrid(nm, gid) {
 				ret = append(ret, gid)
 			}
 		}
@@ -102,14 +101,16 @@ func (cp *convexPolygon) getGrids(gsize int64, maxVNum int64) []int64 {
 }
 
 //构建不可穿过的线(每个区域至少有一条不可穿过的线)
-func (cp *convexPolygon) makeLines() error {
-	length1 := len(cp.ps)
+func (cp *convexPolygon) makeLines(nm *NavMesh) error {
+	length1 := len(cp.pindex)
 	length2 := len(cp.lcs)
 	l := line{}
+	l1 := line{}
 	for i := 0; i < length1; i++ {
-		l.sp, l.ep = cp.ps[i], cp.ps[(i+1)%length1]
+		l.sp, l.ep = nm.points[cp.pindex[i]], nm.points[cp.pindex[(i+1)%length1]]
 		for j := 0; j < length2; j++ {
-			if l.isSame(cp.lcs[j].l) {
+			l1.sp, l1.ep = nm.points[cp.lcs[j].spindex], nm.points[cp.lcs[j].epindex]
+			if l.isSame(l1) {
 				goto CT
 			}
 		}
@@ -125,30 +126,26 @@ func (cp *convexPolygon) makeLines() error {
 }
 
 //相互构建区域相邻关系(区域与区域最多只有一个l2cp)
-func make_l2cp(cp *convexPolygon, ocp *convexPolygon) {
-	length1 := len(cp.ps)
-	length2 := len(ocp.ps)
+func (nm *NavMesh) make_l2cp(cp *convexPolygon, ocp *convexPolygon) {
+	length1 := len(cp.pindex)
+	length2 := len(ocp.pindex)
 	for i := 0; i < length1; i++ {
 		for j := length2 - 1; j >= 0; j-- {
-			if cp.ps[i] == ocp.ps[j] {
+			if cp.pindex[i] == ocp.pindex[j] {
 				j1 := (j - 1 + length2) % length2
 				i1 := (i + 1) % length1
-				if ocp.ps[j1] == cp.ps[i1] {
+				if ocp.pindex[j1] == cp.pindex[i1] {
 					l2cp := &line2CP{
-						l: line{
-							sp: cp.ps[i],
-							ep: cp.ps[i1],
-						},
-						cp: ocp,
+						spindex: cp.pindex[i],
+						epindex: cp.pindex[i1],
+						cp:      ocp,
 					}
 					cp.lcs = append(cp.lcs, l2cp)
 
 					l2cp = &line2CP{
-						l: line{
-							sp: ocp.ps[j],
-							ep: ocp.ps[j1],
-						},
-						cp: cp,
+						spindex: ocp.pindex[j],
+						epindex: ocp.pindex[j1],
+						cp:      cp,
 					}
 					ocp.lcs = append(ocp.lcs, l2cp)
 				}

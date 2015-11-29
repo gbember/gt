@@ -69,15 +69,15 @@ func (l line) isCross(ol line) bool {
 }
 
 //线是否与多边形的边相交(交叉点包括线的起点和终点)
-func (l line) isIntersectConvexPolygon(cp *convexPolygon) bool {
-	length := len(cp.ps) - 1
-	ol := line{sp: cp.ps[length-1], ep: cp.ps[0]}
+func (l line) isIntersectConvexPolygon(nm *NavMesh, cp *convexPolygon) bool {
+	length := len(cp.pindex) - 1
+	ol := line{sp: nm.points[cp.pindex[length-1]], ep: nm.points[cp.pindex[0]]}
 	if l.isIntersect(ol) {
 		return true
 	}
 	for i := 1; i < length; i++ {
 		ol.sp = ol.ep
-		ol.ep = cp.ps[i]
+		ol.ep = nm.points[cp.pindex[i]]
 		if l.isIntersect(ol) {
 			return true
 		}
@@ -87,15 +87,15 @@ func (l line) isIntersectConvexPolygon(cp *convexPolygon) bool {
 }
 
 //线是否穿过多边形的边(各顶点和边不算)
-func (l line) isCrossConvexPolygon(cp *convexPolygon) bool {
-	length := len(cp.ps) - 1
-	ol := line{sp: cp.ps[length-1], ep: cp.ps[0]}
+func (l line) isCrossConvexPolygon(nm *NavMesh, cp *convexPolygon) bool {
+	length := len(cp.pindex) - 1
+	ol := line{sp: nm.points[cp.pindex[length-1]], ep: nm.points[cp.pindex[0]]}
 	if l.isCross(ol) {
 		return true
 	}
 	for i := 1; i < length; i++ {
 		ol.sp = ol.ep
-		ol.ep = cp.ps[i]
+		ol.ep = nm.points[cp.pindex[i]]
 		if l.isCross(ol) {
 			return true
 		}

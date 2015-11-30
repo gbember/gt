@@ -21,15 +21,12 @@ func new_intheap(size int) *intheap {
 }
 
 func (ih *intheap) Push(a int) {
-	index := sort.Search(ih.Len()-1, func(i int) bool { return ih.is[i] < a })
+	index := sort.Search(ih.Len(), func(i int) bool { return ih.is[i] < a })
 	log.Println(index)
 	ih.is = append(ih.is, a)
-	if index != -1 {
-		copy(ih.is[index+1:], ih.is[index:])
-		log.Println(index, a)
-		ih.is[index] = a
-	}
-	log.Println("===", ih)
+
+	copy(ih.is[index+1:], ih.is[index:])
+	ih.is[index] = a
 
 	//	ih.is = append(ih.is, i)
 	//	sindex := 0
@@ -97,7 +94,7 @@ func (ol *intList) Pop() interface{} {
 }
 
 var (
-	num = 100000
+	num = 10
 	gil *intList
 	gih *intheap
 	ics []int
@@ -119,15 +116,16 @@ func TestIntHeap(t *testing.T) {
 	log.SetFlags(log.Lshortfile | log.Ldate)
 	ih := new_intheap(100)
 	ih.Push(100)
+	ih.Push(110)
 	ih.Push(90)
-	//	ih.Push(80)
-	//	ih.Push(70)
-	//	ih.Push(110)
+	ih.Push(80)
+	ih.Push(70)
+	ih.Push(110)
 
-	//	ih.Push(70)
-	//	ih.Push(120)
-	//	ih.Push(140)
-	//	ih.Push(100)
+	ih.Push(70)
+	ih.Push(120)
+	ih.Push(140)
+	ih.Push(100)
 	t.Log(ih)
 }
 

@@ -93,10 +93,22 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	for i := 0; i < length; i++ {
 		l2cp = cp.lcs[i]
 		if l2cp.spindex == ap.pindex || l2cp.epindex == ap.pindex {
-			//TODO 判断是否可以加入
-			//			nmastar.cl[l2cp.spindex] = false
-			//			ap.cp = l2cp.cp
-			//			heap.Push(nmastar.ol, ap)
+			//			if ap.p.X == 340 && ap.p.Y == 758 {
+			//			log.Println(ap.parentAP.cp.id != l2cp.cp.id)
+			//			}
+			if ap.parentAP.cp.id != l2cp.cp.id {
+				//				log.Println(ap.p)
+				nmastar.cl[ap.pindex] = false
+				ap1 = nmastar.mallocAP()
+				ap1.cp = l2cp.cp
+				ap1.p = ap.p
+				ap1.pindex = ap.pindex
+				ap1.size = ap.size
+				ap1.parentAP = ap
+				ap1.length = ap.length + 1
+
+				heap.Push(nmastar.ol, ap1)
+			}
 		} else {
 			if !nmastar.isClosed(l2cp.spindex) {
 				li.sp, li.ep = nmastar.points[l2cp.spindex], ap.p

@@ -38,7 +38,7 @@ type astar_point struct {
 }
 
 func (ol openList) Len() int           { return len(ol) }
-func (ol openList) Less(i, j int) bool { return ol[i].size < ol[j].size }
+func (ol openList) Less(i, j int) bool { return ol[i].size <= ol[j].size }
 func (ol openList) Swap(i, j int)      { ol[i], ol[j] = ol[j], ol[i] }
 func (ol *openList) Push(x interface{}) {
 	*ol = append(*ol, x.(*astar_point))
@@ -81,7 +81,7 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		ap1 = nmastar.mallocAP()
 		ap1.cp = ap.cp
 		ap1.p = nmastar.destP
-		ap1.size = li.Distance2()
+		ap1.size = ap.size + int64(li.Distance())
 		ap1.parentAP = ap
 		ap1.length = ap.length + 1
 
@@ -92,36 +92,31 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	var l2cp *line2CP
 	for i := 0; i < length; i++ {
 		l2cp = cp.lcs[i]
-		if !nmastar.isClosed(l2cp.spindex) {
-			if l2cp.spindex == ap.pindex {
-				nmastar.cl[l2cp.spindex] = false
-				ap.cp = l2cp.cp
-				heap.Push(nmastar.ol, ap)
-			} else {
-				li.sp, li.ep = nmastar.points[l2cp.spindex], nmastar.destP
+		if l2cp.spindex == ap.pindex || l2cp.epindex == ap.pindex {
+			//TODO 判断是否可以加入
+			//			nmastar.cl[l2cp.spindex] = false
+			//			ap.cp = l2cp.cp
+			//			heap.Push(nmastar.ol, ap)
+		} else {
+			if !nmastar.isClosed(l2cp.spindex) {
+				li.sp, li.ep = nmastar.points[l2cp.spindex], ap.p
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.spindex
-				ap1.size = li.Distance2()
+				ap1.size = ap.size + int64(li.Distance())
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
 
 				heap.Push(nmastar.ol, ap1)
 			}
-		}
-		if !nmastar.isClosed(l2cp.epindex) {
-			if l2cp.epindex == ap.pindex {
-				nmastar.cl[l2cp.epindex] = false
-				ap.cp = l2cp.cp
-				heap.Push(nmastar.ol, ap)
-			} else {
-				li.sp, li.ep = nmastar.points[l2cp.epindex], nmastar.destP
+			if !nmastar.isClosed(l2cp.epindex) {
+				li.sp, li.ep = nmastar.points[l2cp.epindex], ap.p
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.epindex
-				ap1.size = li.Distance2()
+				ap1.size = ap.size + int64(li.Distance())
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
 
@@ -153,6 +148,7 @@ func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
 
 	var apx interface{}
 	for nmastar.ol.Len() > 0 {
+
 		apx = heap.Pop(nmastar.ol)
 		ap = apx.(*astar_point)
 		if nmastar.isClosed(ap.pindex) {

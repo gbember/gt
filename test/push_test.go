@@ -2,8 +2,6 @@
 package test
 
 import (
-	"container/heap"
-	"log"
 	"math/rand"
 	"sort"
 	"testing"
@@ -22,7 +20,6 @@ func new_intheap(size int) *intheap {
 
 func (ih *intheap) Push(a int) {
 	index := sort.Search(ih.Len(), func(i int) bool { return ih.is[i] < a })
-	log.Println(index)
 	ih.is = append(ih.is, a)
 
 	copy(ih.is[index+1:], ih.is[index:])
@@ -113,7 +110,6 @@ func init() {
 }
 
 func TestIntHeap(t *testing.T) {
-	log.SetFlags(log.Lshortfile | log.Ldate)
 	ih := new_intheap(100)
 	ih.Push(100)
 	ih.Push(110)
@@ -129,19 +125,19 @@ func TestIntHeap(t *testing.T) {
 	t.Log(ih)
 }
 
-func BenchmarkIntHeap(b *testing.B) {
-	gih.Clear()
-	for i := 0; i < b.N; i++ {
-		gih.Push(ics[i%len(ics)])
-	}
-	b.Log(gih.Len())
-}
+//func BenchmarkIntHeap(b *testing.B) {
+//	gih.Clear()
+//	for i := 0; i < b.N; i++ {
+//		gih.Push(ics[i%len(ics)])
+//	}
+//	b.Log(gih.Len())
+//}
 
-func BenchmarkIntList(b *testing.B) {
-	old := *gil
-	*gil = old[0:0]
-	for i := 0; i < b.N; i++ {
-		heap.Push(gil, ics[i%len(ics)])
-	}
-	b.Log(gil.Len())
-}
+//func BenchmarkIntList(b *testing.B) {
+//	old := *gil
+//	*gil = old[0:0]
+//	for i := 0; i < b.N; i++ {
+//		heap.Push(gil, ics[i%len(ics)])
+//	}
+//	b.Log(gil.Len())
+//}

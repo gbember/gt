@@ -94,7 +94,7 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		l2cp = cp.lcs[i]
 		if !nmastar.isClosed(l2cp.spindex) {
 			if l2cp.spindex == ap.pindex {
-				//				delete(nmastar.cl, ap.p)
+				nmastar.cl[l2cp.spindex] = false
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
@@ -112,11 +112,12 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		}
 		if !nmastar.isClosed(l2cp.epindex) {
 			if l2cp.epindex == ap.pindex {
-				//				delete(nmastar.cl, ap.p)
+				nmastar.cl[l2cp.epindex] = false
 				ap.cp = l2cp.cp
 				heap.Push(nmastar.ol, ap)
 			} else {
 				li.sp, li.ep = nmastar.points[l2cp.epindex], nmastar.destP
+				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.epindex

@@ -29,12 +29,15 @@ type openList []*astar_point
 
 //A星节点结构
 type astar_point struct {
-	p        Point
-	pindex   uint16
-	cp       *convexPolygon
-	size     int64
-	length   int
-	parentAP *astar_point
+	p         Point
+	pindex    uint16
+	cp        *convexPolygon
+	size      int64
+	g         int64
+	h         int64
+	length    int
+	lineIndex int
+	parentAP  *astar_point
 }
 
 func (ol openList) Len() int           { return len(ol) }
@@ -53,12 +56,8 @@ func (ol *openList) Pop() interface{} {
 
 func (nmastar *NavmeshAstar) reset() {
 	*nmastar.ol = (*nmastar.ol)[0:0]
-	//	for i := 0; i < len(nmastar.cl); i++ {
-	//		nmastar.cl[i] = false
-	//	}
 	copy(nmastar.cl, nmastar.cache_cl)
-	//	length := len(nmastar.points) + 1
-	//	nmastar.cl = make([]bool, length, length)
+
 	nmastar.aindex = 0
 }
 
@@ -76,12 +75,16 @@ func (nmastar *NavmeshAstar) mallocAP() *astar_point {
 func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	var ap1 *astar_point
 	var li line
+	size := int64(0)
 	if ap.cp == nmastar.destCP {
 		li.sp, li.ep = ap.p, nmastar.destP
+		size = int64(li.Distance())
 		ap1 = nmastar.mallocAP()
 		ap1.cp = ap.cp
 		ap1.p = nmastar.destP
-		ap1.size = ap.size + int64(li.Distance())
+		ap1.g = ap.g + size
+		ap1.h = 0
+		ap1.size = ap1.g + ap1.h
 		ap1.parentAP = ap
 		ap1.length = ap.length + 1
 
@@ -93,14 +96,12 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	for i := 0; i < length; i++ {
 		l2cp = cp.lcs[i]
 		if l2cp.spindex == ap.pindex || l2cp.epindex == ap.pindex {
-			//			if ap.p.X == 340 && ap.p.Y == 758 {
-			//			log.Println(ap.parentAP.cp.id != l2cp.cp.id)
-			//			}
 			if ap.parentAP.cp.id != l2cp.cp.id {
-				//				log.Println(ap.p)
 				nmastar.cl[ap.pindex] = false
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
+				ap1.g = ap.g
+				ap1.h = ap.h
 				ap1.p = ap.p
 				ap1.pindex = ap.pindex
 				ap1.size = ap.size
@@ -112,25 +113,35 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		} else {
 			if !nmastar.isClosed(l2cp.spindex) {
 				li.sp, li.ep = nmastar.points[l2cp.spindex], ap.p
+				size = int64(li.Distance())
+				li.ep = nmastar.destP
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.spindex
-				ap1.size = ap.size + int64(li.Distance())
+				ap1.g = ap.g + size
+				ap1.h = int64(li.Distance())
+				ap1.size = ap1.g + ap1.h
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
+				ap1.lineIndex = i
 
 				heap.Push(nmastar.ol, ap1)
 			}
 			if !nmastar.isClosed(l2cp.epindex) {
 				li.sp, li.ep = nmastar.points[l2cp.epindex], ap.p
+				size = int64(li.Distance())
+				li.ep = nmastar.destP
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.epindex
-				ap1.size = ap.size + int64(li.Distance())
+				ap1.g = ap.g + size
+				ap1.h = int64(li.Distance())
+				ap1.size = ap1.g + ap1.h
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
+				ap1.lineIndex = i
 
 				heap.Push(nmastar.ol, ap1)
 			}
@@ -169,13 +180,7 @@ func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
 
 		if ap.p == nmastar.destP {
 			//找到路径
-			ps := make([]Point, ap.length, ap.length)
-			i := ap.length - 1
-			for ; ap != nil; i-- {
-				ps[i] = ap.p
-				ap = ap.parentAP
-			}
-			//			log.Println(nmastar.num1,nmastar.num2)
+			ps := nmastar.get_path(ap)
 			return ps, true
 		}
 		nmastar.addCloseList(ap.pindex)
@@ -183,4 +188,41 @@ func (nmastar *NavmeshAstar) findPath() ([]Point, bool) {
 
 	}
 	return nil, false
+}
+
+func (nmastar *NavmeshAstar) get_path(ap *astar_point) []Point {
+	//TODO 删除一些不必要的点
+	tap := ap
+	lines := make([]line, 0, 100)
+	l := line{}
+	for ap != nil {
+		if ap.parentAP != nil && ap.parentAP.parentAP != nil {
+			l2cp := ap.parentAP.parentAP.cp.lcs[ap.parentAP.lineIndex]
+			lines = append(lines, line{sp: nmastar.points[l2cp.spindex], ep: nmastar.points[l2cp.epindex]})
+			l.sp, l.ep = ap.p, ap.parentAP.parentAP.p
+			isFlag := true
+			for i := 0; i < len(lines); i++ {
+				if !l.isIntersect(lines[i]) {
+					lines = lines[0:0]
+					isFlag = false
+					break
+				}
+			}
+			if isFlag {
+				lines = lines[0:0]
+				ap.parentAP = ap.parentAP.parentAP
+				continue
+			}
+		}
+		ap = ap.parentAP
+	}
+	ap = tap
+
+	ps := make([]Point, ap.length, ap.length)
+	i := ap.length - 1
+	for ; ap != nil; i-- {
+		ps[i] = ap.p
+		ap = ap.parentAP
+	}
+	return ps
 }

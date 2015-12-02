@@ -65,7 +65,7 @@ func NewNavMesh(meshFileName string) (*NavMesh, error) {
 			}
 		}
 		nm.cps[i] = newConvexPolygon(i)
-		nm.cps[i].pindex = indexs
+		nm.cps[i].pindexs = indexs
 	}
 	length = len(pindex_m)
 	nm.points = make([]Point, length, length)

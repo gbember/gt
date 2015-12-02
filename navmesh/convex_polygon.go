@@ -6,7 +6,7 @@ import "errors"
 //凸多边形
 type convexPolygon struct {
 	id     int        //区域编号
-	pindex []uint16   //多边形的所有顶点(逆时针排序)
+	pindexs []uint16   //多边形的所有顶点(逆时针排序)
 	lines  []line     //该多边形不能穿过的线
 	lcs    []*line2CP //相邻区域
 }
@@ -28,13 +28,13 @@ func newConvexPolygon(id int) *convexPolygon {
 
 //是否包含点
 func (cp *convexPolygon) isContainPoint(nm *NavMesh, p Point) bool {
-	length := len(cp.pindex)
+	length := len(cp.pindexs)
 
 	p1 := Point{}
 	p2 := Point{}
 	for i := 0; i < length; i++ {
-		p1 = nm.points[cp.pindex[i]]
-		p2 = nm.points[cp.pindex[(i+1)%length]]
+		p1 = nm.points[cp.pindexs[i]]
+		p2 = nm.points[cp.pindexs[(i+1)%length]]
 		if (p2.X-p1.X)*(p.Y-p1.Y)-(p.X-p1.X)*(p2.Y-p1.Y) > 0 {
 			return false
 		}
@@ -60,14 +60,14 @@ func (cp *convexPolygon) isIntersectGrid(nm *NavMesh, gridNum int64) bool {
 
 //得到区域包含的格子id列表
 func (cp *convexPolygon) getGrids(nm *NavMesh) []int64 {
-	index := cp.pindex[0]
+	index := cp.pindexs[0]
 	maxX := nm.points[index].X
 	maxY := nm.points[index].Y
 	minX := nm.points[index].X
 	minY := nm.points[index].Y
 	t := int64(0)
-	for i := 1; i < len(cp.pindex); i++ {
-		index = cp.pindex[i]
+	for i := 1; i < len(cp.pindexs); i++ {
+		index = cp.pindexs[i]
 		t = nm.points[index].X
 		if t > maxX {
 			maxX = t
@@ -102,12 +102,12 @@ func (cp *convexPolygon) getGrids(nm *NavMesh) []int64 {
 
 //构建不可穿过的线(每个区域至少有一条不可穿过的线)
 func (cp *convexPolygon) makeLines(nm *NavMesh) error {
-	length1 := len(cp.pindex)
+	length1 := len(cp.pindexs)
 	length2 := len(cp.lcs)
 	l := line{}
 	l1 := line{}
 	for i := 0; i < length1; i++ {
-		l.sp, l.ep = nm.points[cp.pindex[i]], nm.points[cp.pindex[(i+1)%length1]]
+		l.sp, l.ep = nm.points[cp.pindexs[i]], nm.points[cp.pindexs[(i+1)%length1]]
 		for j := 0; j < length2; j++ {
 			l1.sp, l1.ep = nm.points[cp.lcs[j].spindex], nm.points[cp.lcs[j].epindex]
 			if l.isSame(l1) {
@@ -127,24 +127,24 @@ func (cp *convexPolygon) makeLines(nm *NavMesh) error {
 
 //相互构建区域相邻关系(区域与区域最多只有一个l2cp)
 func (nm *NavMesh) make_l2cp(cp *convexPolygon, ocp *convexPolygon) {
-	length1 := len(cp.pindex)
-	length2 := len(ocp.pindex)
+	length1 := len(cp.pindexs)
+	length2 := len(ocp.pindexs)
 	for i := 0; i < length1; i++ {
 		for j := length2 - 1; j >= 0; j-- {
-			if cp.pindex[i] == ocp.pindex[j] {
+			if cp.pindexs[i] == ocp.pindexs[j] {
 				j1 := (j - 1 + length2) % length2
 				i1 := (i + 1) % length1
-				if ocp.pindex[j1] == cp.pindex[i1] {
+				if ocp.pindexs[j1] == cp.pindexs[i1] {
 					l2cp := &line2CP{
-						spindex: cp.pindex[i],
-						epindex: cp.pindex[i1],
+						spindex: cp.pindexs[i],
+						epindex: cp.pindexs[i1],
 						cp:      ocp,
 					}
 					cp.lcs = append(cp.lcs, l2cp)
 
 					l2cp = &line2CP{
-						spindex: ocp.pindex[j],
-						epindex: ocp.pindex[j1],
+						spindex: ocp.pindexs[j],
+						epindex: ocp.pindexs[j1],
 						cp:      cp,
 					}
 					ocp.lcs = append(ocp.lcs, l2cp)

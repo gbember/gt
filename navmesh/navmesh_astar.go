@@ -78,7 +78,8 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 	size := int64(0)
 	if ap.cp == nmastar.destCP {
 		li.sp, li.ep = ap.p, nmastar.destP
-		size = int64(li.Distance())
+		//		size = int64(li.Distance())
+		size = li.Distance2()
 		ap1 = nmastar.mallocAP()
 		ap1.cp = ap.cp
 		ap1.p = nmastar.destP
@@ -113,14 +114,16 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 		} else {
 			if !nmastar.isClosed(l2cp.spindex) {
 				li.sp, li.ep = nmastar.points[l2cp.spindex], ap.p
-				size = int64(li.Distance())
+				//				size = int64(li.Distance())
+				size = li.Distance2()
 				li.ep = nmastar.destP
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.spindex
 				ap1.g = ap.g + size
-				ap1.h = int64(li.Distance())
+				//				ap1.h = int64(li.Distance())
+				ap1.h = li.Distance2()
 				ap1.size = ap1.g + ap1.h
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
@@ -130,14 +133,16 @@ func (nmastar *NavmeshAstar) addNextAPOpenList(ap *astar_point) {
 			}
 			if !nmastar.isClosed(l2cp.epindex) {
 				li.sp, li.ep = nmastar.points[l2cp.epindex], ap.p
-				size = int64(li.Distance())
+				//				size = int64(li.Distance())
+				size = li.Distance2()
 				li.ep = nmastar.destP
 				ap1 = nmastar.mallocAP()
 				ap1.cp = l2cp.cp
 				ap1.p = li.sp
 				ap1.pindex = l2cp.epindex
 				ap1.g = ap.g + size
-				ap1.h = int64(li.Distance())
+				//				ap1.h = int64(li.Distance())
+				ap1.h = li.Distance2()
 				ap1.size = ap1.g + ap1.h
 				ap1.parentAP = ap
 				ap1.length = ap.length + 1
@@ -211,6 +216,7 @@ func (nmastar *NavmeshAstar) get_path(ap *astar_point) []Point {
 			if isFlag {
 				lines = lines[0:0]
 				ap.parentAP = ap.parentAP.parentAP
+				tap.length--
 				continue
 			}
 		}
